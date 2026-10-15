@@ -1,4 +1,9 @@
-import {createClient,isSuccessful} from 'genlayer-js';
+import {createClient} from 'genlayer-js';
+export function isSuccessful(receipt:any):boolean {
+  const status=String(receipt?.statusName??receipt?.status??'').toUpperCase();
+  const result=String(receipt?.txExecutionResultName??receipt?.executionStatus??'').toUpperCase();
+  return status==='FINALIZED' && result==='FINISHED_WITH_RETURN';
+}
 import {studionet} from 'genlayer-js/chains';
 import {safeJson} from './format';
 export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim().toLowerCase();
