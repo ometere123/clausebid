@@ -6,7 +6,7 @@ Clause-aware, bonded, escrow-funded reverse procurement for **public, bounded di
 
 ## Status
 
-The source implementation is pinned to the required Studionet toolchain and is exercised by GenVM lint, Direct Mode state-machine tests, commitment-vector tests, and the frontend build/tests. Live deployment and payout claims are recorded only in `evidence/studionet/` after receipt and recipient-balance verification; Direct Mode is not presented as live validator or transfer evidence.
+The source implementation is pinned to the required Studionet toolchain and is exercised by GenVM lint, Direct Mode state-machine tests, commitment-vector tests, frontend unit tests, and Playwright browser tests. Live deployment and payout claims are recorded only in `evidence/studionet/` after receipt and recipient-balance verification; Direct Mode and the Playwright fixture harness are not presented as live validator or transfer evidence.
 
 ## Contract behavior
 
@@ -36,6 +36,8 @@ npm run test --prefix frontend
 Copy `frontend/.env.example` to `frontend/.env`, then populate **an actual verified contract address** after deployment. Run `npm run dev --prefix frontend`.
 
 Only connect an injected EIP-1193 wallet to Studionet. Private keys used by CLI scripts stay in ignored `.env` files. The driver also supports the repository-local encrypted CLI keystores through `CLAUSEBID_KEYSTORE_PASSWORD`; it never writes private keys to the repository. Contract writes require separate protocol fees; escrow value must not be treated as payment for protocol fees.
+
+The browser subscribes to `accountsChanged`, `chainChanged` and `disconnect`, restores locally tracked transaction hashes after reload, and refuses to claim a parent receipt is an external payout receipt. The Playwright suite uses an explicitly test-only `VITE_E2E_FIXTURE=true` synthetic contract-state harness for recovery/error UI; production builds never set that flag. The deployed URL is separately checked against the real Studionet binding.
 
 ## Live evidence
 

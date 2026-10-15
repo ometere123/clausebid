@@ -410,7 +410,8 @@ class ClauseBid(gl.Contract):
         self._require_network()
         a = self._auction(auction_id)
         self._require(self._sender() == a.buyer and
-                      a.status == "AWAITING_BUYER", "not authorized or not awaiting")
+                      a.status == "AWAITING_BUYER" and
+                      self._now() < int(a.response_due), "not authorized or response window closed")
         self.delivery_verdicts[self._delivery_key(auction_id,int(a.delivery_attempts))] = "BUYER_ACCEPTED"
         self._settle_success(a)
 

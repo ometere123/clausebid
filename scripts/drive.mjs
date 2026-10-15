@@ -185,8 +185,10 @@ if(cmd==='create'){
  }
  console.log('Claim writes are not payout evidence: verify recipient GEN balance and finalized external-message receipts.');
 }else if(cmd==='duplicate-claim'){
- try{await send(0,'claim');throw Error('duplicate claim unexpectedly succeeded');}
- catch(error){console.log('Expected duplicate-claim rejection after receipt inspection:',String(error));}
+ let rejected=false;
+ try{await send(0,'claim');}
+ catch(error){rejected=true;console.log('Expected duplicate-claim rejection after receipt inspection:',String(error));}
+ if(!rejected)throw Error('duplicate claim unexpectedly succeeded; stop and inspect the new transaction before any retry');
 }else if(cmd==='verify-pending'){
  for(const entry of state.history.filter(x=>x.state==='submitted'||x.state==='finalized-failed')){
   console.log('Checking previously submitted transaction',entry.hash);

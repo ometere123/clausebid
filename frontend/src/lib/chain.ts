@@ -12,10 +12,16 @@ import {studionet} from 'genlayer-js/chains';
 import {safeJson} from './format';
 export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim();
 export const CHAIN_ID=61999;
-type Provider={request:(x:{method:string;params?:unknown[]})=>Promise<unknown>};
-declare global { interface Window {ethereum?:Provider;} }
+export type Eip1193Provider={
+  request:(x:{method:string;params?:unknown[]})=>Promise<unknown>;
+  on?:(event:string, listener:(...args:unknown[])=>void)=>void;
+  removeListener?:(event:string, listener:(...args:unknown[])=>void)=>void;
+};
+declare global { interface Window {ethereum?:Eip1193Provider;} }
 type Write={functionName:string;args?:unknown[];value?:bigint};
 const asAddr=()=>{if(!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT))throw new Error('VITE_CLAUSEBID_ADDRESS must be a deployed 0x address');return CONTRACT as `0x${string}`;};
+const provider=()=>{if(!window.ethereum)throw new Error('Install or enable an injected EIP-1193 wallet.');return window.ethereum as Eip1193Provider;};
+const desiredChain=()=>`0x${CHAIN_ID.toString(16)}`;
 const reader:any=createClient({chain:studionet});
 export function decodeContractValue(raw:any):any {
   if(raw instanceof Map)return Object.fromEntries(Array.from(raw.entries(),([k,v])=>[String(k),decodeContractValue(v)]));
@@ -28,12 +34,11 @@ export async function read(functionName:string,args:unknown[]=[]):Promise<any>{
   return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));
 }
 export async function connectWallet():Promise<string>{
-  const p=window.ethereum;
-  if(!p)throw new Error('Install or enable an injected EIP-1193 wallet. MetaMask Snaps are not supported.');
+  const p=provider();
   const accounts=await p.request({method:'eth_requestAccounts'}) as string[];
   if(!Array.isArray(accounts)||!accounts[0])throw new Error('No wallet account available');
   const chainHex=await p.request({method:'eth_chainId'}) as string;
-  const desired='0x'+CHAIN_ID.toString(16);
+  const desired=desiredChain();
   if(String(chainHex).toLowerCase()!==desired){
     try{await p.request({method:'wallet_switchEthereumChain',params:[{chainId:desired}]});}
     catch(err){
@@ -45,6 +50,8 @@ export async function connectWallet():Promise<string>{
       }]});
     }
   }
+  const confirmedChain=await p.request({method:'eth_chainId'}) as string;
+  if(String(confirmedChain).toLowerCase()!==desired)throw new Error('Wallet is not connected to Studionet chain 61999.');
   return accounts[0].toLowerCase();
 }
 export type Tracked={hash:string;action:string;phase:string;timestamp:number;detail?:string};
@@ -55,12 +62,12 @@ export function track(item:Tracked){
 }
 export function tracked():Tracked[]{try{return JSON.parse(localStorage.getItem(TXKEY)||'[]');}catch{return [];}}
 export async function write(account:string,w:Write,onChange?:(s:string)=>void):Promise<string>{
-  const provider=window.ethereum;if(!provider)throw new Error('EIP-1193 wallet not found');
+  const injected=provider();
   const connected=await connectWallet();
   if(connected.toLowerCase()!==account.toLowerCase()){
     throw new Error('Active wallet changed. Reload the selected wallet before signing.');
   }
-  const client:any=createClient({chain:studionet,account:account as `0x${string}`,provider:provider as any});
+  const client:any=createClient({chain:studionet,account:account as `0x${string}`,provider:injected as any});
   await client.connect('studionet');
   const call={address:asAddr(),functionName:w.functionName,args:w.args??[],value:w.value??0n};
   // genlayer-js@1.1.8 estimates the consensus transaction internally and
@@ -88,4 +95,25 @@ export async function refreshTx(hash:string):Promise<void>{
   const success=isSuccessful(result);
   const old=tracked().find(t=>t.hash===hash);
   track({hash,action:old?.action||'unknown',phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(result).slice(0,2000)});
+}
+
+export function subscribeWallet(onAccounts:(accounts:string[])=>void,onChain:(chain:string)=>void,onDisconnect:()=>void):()=>void{
+  const p=window.ethereum;
+  if(!p?.on)return()=>{};
+  const accounts=(...args:unknown[])=>onAccounts(Array.isArray(args[0])?(args[0] as string[]):[]);
+  const chain=(...args:unknown[])=>onChain(String(args[0]??''));
+  const disconnect=()=>onDisconnect();
+  p.on('accountsChanged',accounts);p.on('chainChanged',chain);p.on('disconnect',disconnect);
+  return()=>{p.removeListener?.('accountsChanged',accounts);p.removeListener?.('chainChanged',chain);p.removeListener?.('disconnect',disconnect)};
+}
+
+export function parseReceipt(detail?:string):{status:string;execution:string;messages:unknown[];result?:unknown}|null{
+  if(!detail)return null;
+  try{
+    const value=JSON.parse(detail) as any;
+    const leader=Array.isArray(value?.consensus_data?.leader_receipt)
+      ? value.consensus_data.leader_receipt.find((x:any)=>x?.mode==='leader')
+      : undefined;
+    return {status:String(value?.statusName??value?.status??'UNKNOWN'),execution:String(value?.txExecutionResultName??leader?.execution_result??value?.executionStatus??'UNKNOWN'),messages:Array.isArray(value?.messages)?value.messages:[],result:value?.result};
+  }catch{return null;}
 }

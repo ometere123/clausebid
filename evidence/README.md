@@ -19,5 +19,6 @@ Verified release artifacts:
 - `studionet/deployment.json` records the single source-verified deployment.
 - `studionet/source-verification.json` records the retrieved-code SHA-256 comparison.
 - `studionet/live-demo.json` records the five-wallet auction, validator findings, rejected/retried consensus transactions, correction flow, claims, emitted messages and recipient balance readbacks.
+- `studionet/evidence-matrix.md` maps security/economic claims to exact tests and finalized hosted transactions, and labels historical evidence from the superseded address.
 
 The claim parent receipts expose outbound message records and the recipient balance readbacks prove the native-GEN deltas. Studionet did not expose a separate child acceptance receipt through the pinned SDK; claim records therefore remain `DISPATCHED_PENDING_EXTERNAL_SETTLEMENT` rather than being promoted to a stronger status by assumption.

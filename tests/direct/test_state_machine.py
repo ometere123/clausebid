@@ -308,6 +308,25 @@ def test_buyer_acceptance_creates_only_winner_and_refund_liabilities(direct_vm, 
     assert int(contract.get_credit(_addr(direct_bob))) == 4 * GEN + 1 * GEN
 
 
+def test_buyer_cannot_accept_after_response_window(direct_vm, direct_deploy, direct_alice, direct_bob):
+    contract, auction_id = _create(direct_vm, direct_deploy, direct_alice, 20 * GEN)
+    _commit(direct_vm, contract, auction_id, direct_bob, 4 * GEN, "all-in")
+    _open_reveal(direct_vm)
+    _reveal(direct_vm, contract, auction_id, direct_bob, 4 * GEN, "all-in")
+    _open_review(direct_vm)
+    _classify(direct_vm, contract, ["PASS"] * 4)
+    _evaluate(direct_vm, contract, auction_id, direct_bob)
+    contract.finalize_award(auction_id)
+    direct_vm.sender = direct_bob
+    direct_vm.warp("2026-01-01T00:40:01Z")
+    contract.submit_delivery(auction_id, "All four obligations are fulfilled.")
+    direct_vm.sender = direct_alice
+    direct_vm.warp("2026-01-01T00:50:02Z")
+    with direct_vm.expect_revert("response window closed"):
+        contract.accept_delivery(auction_id)
+    assert contract.get_procurement(auction_id).status == "AWAITING_BUYER"
+
+
 def test_buyer_refusal_neutral_review_passes(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie):
     contract, auction_id = _create(direct_vm, direct_deploy, direct_alice)
     _commit(direct_vm, contract, auction_id, direct_bob, 4 * GEN, "all-in")

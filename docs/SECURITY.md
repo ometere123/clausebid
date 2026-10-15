@@ -45,6 +45,11 @@ This document records the source audit boundary, enforced invariants, and eviden
 - Verify the deployed GenVM supports the Python storage dataclasses, dictionary output, hashing and custom validator pattern.
 - Profile bid-review validator disagreement and protocol fees for each call.
 
+The current source-verified deployment and the superseded funded-demo deployment
+are both recorded in `evidence/studionet/deployment.json`. The supersession is
+not a reset: the original auction and 42 GEN readbacks remain immutable
+historical evidence, while new procurements must use the replacement address.
+
 ## Non-goals
 
 Physical goods, proof of uniqueness, off-chain IP ownership, confidential texts, legal enforceability in a jurisdiction, external price/origin facts, automatic network-level fee finalization, emergency admin rescue.

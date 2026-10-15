@@ -2,15 +2,22 @@
   "network": "studionet",
   "chainId": 61999,
   "rpc": "https://studio.genlayer.com/api",
-  "contractAddress": "0x9c70a987A6875F0B0128AEf16C57F4998F778827",
-  "sourceCommit": "e3b554b8cbbcc2660b3a520f89afb07382565be0",
-  "sourceSha256": "6626d52672ae45fd050dac7a7f675aa50db585843811a6267cf3f87dc4822058",
-  "deploymentTransaction": "0xf87c4ef9a0769788cb7d470745fed3e09054ee913045245e36e8bf4cb89bd445",
+  "contractAddress": "0x24f95ED58fcfa4e339C504fF388A922347757515",
+  "sourceCommit": "TO_BE_FILLED_WITH_SOURCE_COMMIT",
+  "sourceSha256": "18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4",
+  "deploymentTransaction": "0x3e2cfa63e81b509cda9297ebe48d60516c5370682a8c0458d94d773d2bf7e408",
   "deploymentStatus": "FINALIZED",
   "deploymentConsensus": "MAJORITY_AGREE",
   "deploymentLeaderExecution": "SUCCESS",
   "deploymentValidatorVotes": 5,
   "sourceVerification": "evidence/studionet/source-verification.json",
+  "previousDeployment": {
+    "contractAddress": "0x9c70a987A6875F0B0128AEf16C57F4998F778827",
+    "sourceSha256": "6626d52672ae45fd050dac7a7f675aa50db585843811a6267cf3f87dc4822058",
+    "deploymentTransaction": "0xf87c4ef9a0769788cb7d470745fed3e09054ee913045245e36e8bf4cb89bd445",
+    "status": "SUPERSEDED",
+    "reason": "accept_delivery did not enforce the ten-minute buyer response deadline; replacement adds the on-chain deadline check. Existing funded evidence remains archived against this address."
+  },
   "frontend": "https://clausebid.vercel.app",
-  "note": "The contract source commit is the last commit that changed contracts/clausebid.py. Later commits contain only deployment, frontend, driver and evidence updates unless explicitly stated."
+  "note": "The current sourceCommit is the repository commit containing the deployed contract source. Later commits contain frontend, CI and evidence synchronization only. The replacement was not created to hide failed evidence; it fixes the documented late-acceptance defect."
 }

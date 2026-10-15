@@ -7,7 +7,8 @@
     "dev": "vite --host",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test -c playwright.config.ts"
   },
   "dependencies": {
     "clausebid": "file:..",
@@ -17,6 +18,7 @@
     "react-dom": "19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@tailwindcss/vite": "4.1.14",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",

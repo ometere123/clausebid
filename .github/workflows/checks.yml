@@ -28,3 +28,7 @@ jobs:
       - run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
       - run: npm run build --prefix frontend
       - run: npm run test --prefix frontend
+      - working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - working-directory: frontend
+        run: npm run test:e2e

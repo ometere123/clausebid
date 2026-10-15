@@ -1,0 +1,87 @@
+import {test,expect,type Page} from '@playwright/test';
+
+const ACCOUNT='0x1111111111111111111111111111111111111111';
+const ACCOUNT_B='0x3333333333333333333333333333333333333333';
+const CHAIN='0xf22f';
+
+async function installWallet(page:Page){
+  await page.addInitScript(({account,accountB,chain})=>{
+    const listeners=new Map<string,Set<(...args:unknown[])=>void>>();
+    const state={account,accounts:[account],chain,rejectConnect:false,rejectSign:false};
+    const emit=(event:string,...args:unknown[])=>listeners.get(event)?.forEach(fn=>fn(...args));
+    (window as any).ethereum={
+      request:async(request:{method:string;params?:unknown[]})=>{
+        const {method,params}=request;
+        if(method==='eth_requestAccounts'){if(state.rejectConnect)throw Object.assign(new Error('User rejected wallet connection'),{code:4001});return state.accounts;}
+        if(method==='eth_accounts')return state.accounts;
+        if(method==='eth_chainId')return state.chain;
+        if(method==='wallet_switchEthereumChain'){state.chain=String((params as any)?.[0]?.chainId||chain);emit('chainChanged',state.chain);return null;}
+        if(method==='wallet_addEthereumChain'){state.chain=chain;emit('chainChanged',state.chain);return null;}
+        if(method==='wallet_getSnaps')return {};
+        if(method==='wallet_requestSnaps')return {};
+        if(method==='eth_sendTransaction'){if(state.rejectSign)throw Object.assign(new Error('User rejected transaction signature'),{code:4001});return '0x'+'a'.repeat(64);}
+        throw new Error('Unsupported wallet method '+method);
+      },
+      on:(event:string,fn:(...args:unknown[])=>void)=>{if(!listeners.has(event))listeners.set(event,new Set());listeners.get(event)!.add(fn)},
+      removeListener:(event:string,fn:(...args:unknown[])=>void)=>listeners.get(event)?.delete(fn),
+      emit,
+      state,
+      switchAccount:(next:string)=>{state.accounts=[next];state.account=next;emit('accountsChanged',state.accounts)},
+      switchChain:(next:string)=>{state.chain=next;emit('chainChanged',next)},
+    };
+    (window as any).__clausebidTest={accountB};
+  },{account:ACCOUNT,accountB:ACCOUNT_B,chain:CHAIN});
+}
+
+test.beforeEach(async({page})=>{await installWallet(page);});
+
+test('navigates all seven screens and preserves mobile navigation',async({page})=>{
+  await page.goto('/#/home');
+  for(const [label,heading] of [['Marketplace','Discover procurements.'],['Create','Create a procurement.'],['Auction room','Auction #1'],['Delivery','Delivery #1'],['My dashboard','My procurement dashboard.'],['Audit','The audit explorer.'],['Home',"The lowest bid"]] as const){
+    await page.getByRole('button',{name:label,exact:true}).click();
+    await expect(page.getByRole('heading',{name:heading}).first()).toBeVisible();
+  }
+  await page.setViewportSize({width:390,height:844});
+  await page.getByRole('button',{name:'Open navigation'}).click();
+  await expect(page.getByRole('button',{name:'Marketplace',exact:true})).toBeVisible();
+});
+
+test('handles wallet connection rejection, signing rejection, account changes and chain changes',async({page})=>{
+  await page.goto('/#/dashboard');
+  await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=true});
+  await page.getByRole('button',{name:'Connect wallet'}).click();
+  await expect(page.getByRole('alert')).toContainText('rejected');
+  await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=false});
+  await page.getByRole('button',{name:'Connect wallet'}).click();
+  await expect(page.getByRole('button',{name:'0x1111…1111'})).toBeVisible();
+  await page.evaluate(()=>{(window as any).ethereum.state.rejectSign=true});
+  await page.goto('/#/auction/1');
+  await page.getByLabel('All-in price in GEN').fill('4');
+  await page.getByLabel('Complete offer terms').fill('All four requirements are addressed.');
+  await page.getByRole('button',{name:/Save reveal backup and commit/}).click();
+  await expect(page.getByRole('alert')).toContainText('rejected');
+  await page.evaluate((next)=>{(window as any).ethereum.switchAccount(next)},ACCOUNT_B);
+  await expect(page.getByRole('alert')).toContainText('account changed');
+  await page.evaluate(()=>{(window as any).ethereum.switchChain('0x1')});
+  await expect(page.getByRole('alert')).toContainText('Studionet 61999');
+});
+
+test('shows reserved review resume controls instead of unsafe restart/cancel',async({page})=>{
+  await page.goto('/#/auction/1');
+  await expect(page.getByRole('button',{name:'Resume evaluation'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Cancel stale review'})).toBeDisabled();
+  await expect(page.getByText('Reservation is protected until review grace expires.')).toBeVisible();
+  await page.goto('/#/delivery/1');
+  await expect(page.getByRole('button',{name:'Resume neutral review'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Reserve & run neutral review'})).toHaveCount(0);
+});
+
+test('recovers persisted transactions and exposes the claim audit ledger',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('clausebid:pending',JSON.stringify([{hash:'0x'+'b'.repeat(64),action:'claim',phase:'submitted',timestamp:Date.now()}])));
+  await page.goto('/#/audit');
+  await expect(page.getByRole('heading',{name:'Individual claim ledger'})).toBeVisible();
+  await expect(page.getByText('Claim #0')).toBeVisible();
+  await expect(page.getByText('DISPATCHED PENDING EXTERNAL SETTLEMENT')).toBeVisible();
+  await expect(page.getByText('Wallet transaction history')).toBeVisible();
+  await expect(page.getByText('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')).toBeVisible();
+});
