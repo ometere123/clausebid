@@ -56,6 +56,8 @@ test('handles wallet connection rejection, signing rejection, account changes an
   await expect(page.getByRole('button',{name:'0x1111…1111'})).toBeVisible();
   await page.evaluate(()=>{(window as any).ethereum.state.rejectSign=true});
   await page.goto('/#/auction/1');
+  await expect(page.getByRole('heading',{name:'Auction #1'})).toBeVisible();
+  await expect(page.getByRole('button',{name:/Save reveal backup and commit/})).toBeEnabled();
   await page.getByLabel('All-in price in GEN').fill('4');
   await page.getByLabel('Complete offer terms').fill('All four requirements are addressed.');
   await page.getByRole('button',{name:/Save reveal backup and commit/}).click();

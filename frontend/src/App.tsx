@@ -47,7 +47,10 @@ export default function App(){
   const nextEconomy=await read('get_economy');setEconomy(nextEconomy);
   if(wallet)setClaimable(String(await read('get_credit',[wallet])));else setClaimable('0');
   const claimCount=Number(nextEconomy?.claims??0);const claimRows:Claim[]=[];for(let i=0;i<claimCount;i++)claimRows.push(await read('get_claim',[i]) as Claim);setClaims(claimRows);
-  setError('')}catch(e){setError('Read failed: '+String(e))}finally{setLoading(false)}},[loadOffers,page,selected,wallet]);
+  // A successful background refresh must not erase a wallet or transaction
+  // error that the user still needs to see. Explicit user actions clear
+  // their own errors before starting, so reads only report failures here.
+  }catch(e){setError('Read failed: '+String(e))}finally{setLoading(false)}},[loadOffers,page,selected,wallet]);
  useEffect(()=>{void refresh()},[refresh]);
  useEffect(()=>{const pending=tracked().filter(x=>x.phase==='submitted'||x.phase==='inspect-finality');if(pending.length)void Promise.allSettled(pending.map(x=>refreshTx(x.hash)));},[]);
  useEffect(()=>subscribeWallet(accounts=>{const next=accounts[0]?.toLowerCase()??'';setWallet(next);setReveal(null);setError(next?'Wallet account changed; reloading authoritative state.':'Wallet disconnected.');},chain=>{if(chain.toLowerCase()!==`0x${CHAIN_ID.toString(16)}`){setWallet('');setReveal(null);setError('Wallet switched away from Studionet 61999. Switch back before signing.');}},()=>{setWallet('');setReveal(null);setError('Wallet disconnected.')}),[]);
