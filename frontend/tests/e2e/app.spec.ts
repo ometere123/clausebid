@@ -53,6 +53,9 @@ test('handles wallet connection rejection, signing rejection, account changes an
   await expect(page.getByRole('alert')).toContainText('rejected');
   await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=false});
   await page.getByRole('button',{name:'Connect wallet'}).click();
+  await expect(page.getByRole('button',{name:/Copy wallet address/})).toBeVisible();
+  await page.getByRole('button',{name:/Copy wallet address/}).click();
+  await expect(page.getByRole('button',{name:/Copy wallet address/})).toContainText('Copied');
   await expect(page.getByRole('button',{name:'Disconnect wallet'})).toBeVisible();
   await page.getByRole('button',{name:'Disconnect wallet'}).click();
   await expect(page.getByRole('button',{name:'Connect wallet'})).toBeVisible();
