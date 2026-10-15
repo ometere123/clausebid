@@ -52,7 +52,10 @@ export function track(item:Tracked){
 export function tracked():Tracked[]{try{return JSON.parse(localStorage.getItem(TXKEY)||'[]');}catch{return [];}}
 export async function write(account:string,w:Write,onChange?:(s:string)=>void):Promise<string>{
   const provider=window.ethereum;if(!provider)throw new Error('EIP-1193 wallet not found');
-  await connectWallet();
+  const connected=await connectWallet();
+  if(connected.toLowerCase()!==account.toLowerCase()){
+    throw new Error('Active wallet changed. Reload the selected wallet before signing.');
+  }
   const client:any=createClient({chain:studionet,account:account as `0x${string}`,provider:provider as any});
   await client.connect('studionet');
   const call={address:asAddr(),functionName:w.functionName,args:w.args??[],...(w.value!==undefined?{value:w.value}:{})};
