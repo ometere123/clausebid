@@ -18,3 +18,9 @@ export function remaining(unix:unknown):string {
 }
 export const short=(wallet:string)=>wallet?wallet.slice(0,6)+'…'+wallet.slice(-4):'';
 export const safeJson=(value:unknown)=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v,2);
+export const errorText=(value:unknown)=>{
+ if(value instanceof Error)return value.message||value.name;
+ if(typeof value==='string')return value;
+ const encoded=safeJson(value);
+ return encoded&&encoded!=='{}'?encoded:String(value);
+};

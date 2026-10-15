@@ -9,7 +9,7 @@ export function isSuccessful(receipt:any):boolean {
   return finalized && execution;
 }
 import {studionet} from 'genlayer-js/chains';
-import {safeJson} from './format';
+import {safeJson,errorText} from './format';
 export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim();
 export const CHAIN_ID=61999;
 export type Eip1193Provider={
@@ -68,7 +68,11 @@ export async function write(account:string,w:Write,onChange?:(s:string)=>void):P
     throw new Error('Active wallet changed. Reload the selected wallet before signing.');
   }
   const client:any=createClient({chain:studionet,account:account as `0x${string}`,provider:injected as any});
-  await client.connect('studionet');
+  // The pinned SDK's connect helper probes GenLayer Snaps. Browser wallets in
+  // this application are injected EIP-1193 providers (including Rabby), and
+  // do not need or expose Snap APIs. connectWallet() above has already checked
+  // and switched to chain 61999, so calling the helper here would fail before
+  // the wallet can display the actual transaction approval prompt.
   const call={address:asAddr(),functionName:w.functionName,args:w.args??[],value:w.value??0n};
   // genlayer-js@1.1.8 estimates the consensus transaction internally and
   // passes the native value through to the contract. There is no
@@ -85,8 +89,8 @@ export async function write(account:string,w:Write,onChange?:(s:string)=>void):P
     track({hash,action:w.functionName,phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(receipt).slice(0,2000)});
     if(!success)throw new Error('Finalized transaction did not execute successfully: '+hash);
   }catch(error){
-    track({hash,action:w.functionName,phase:'inspect-finality',timestamp:Date.now(),detail:String(error)});
-    throw new Error('Transaction '+hash+' requires inspection. Do NOT resubmit blindly. '+String(error));
+    track({hash,action:w.functionName,phase:'inspect-finality',timestamp:Date.now(),detail:errorText(error)});
+    throw new Error('Transaction '+hash+' requires inspection. Do NOT resubmit blindly. '+errorText(error));
   }
   return hash;
 }
