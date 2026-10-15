@@ -21,6 +21,7 @@ Verified release artifacts:
 - `studionet/live-demo.json` records the historical five-wallet auction on the superseded address.
 - `studionet/live-demo-replacement.json` records the replacement-address five-wallet auction, real deadline timing, substantive findings, review disagreements and retries, correction flow, claims, emitted messages and recipient balance readbacks.
 - `studionet/consensus-investigation.json` records the independently re-fetched disagreement receipts, vote patterns, rounds, quorum-cancellation evidence, unavailable fee/timing fields and the one-round PASS convergence.
+- `studionet/frontend-verification.json` records the production bundle binding, Vercel deployment and the strict separation between fixture browser tests and the incomplete real-wallet browser attempt.
 - `studionet/evidence-matrix.md` maps security/economic claims to exact tests and finalized hosted transactions, and labels historical evidence from the superseded address.
 
 The replacement claim parent receipts expose outbound message records and exact

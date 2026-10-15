@@ -37,7 +37,7 @@ Copy `frontend/.env.example` to `frontend/.env`, then populate **an actual verif
 
 Only connect an injected EIP-1193 wallet to Studionet. Private keys used by CLI scripts stay in ignored `.env` files. The driver also supports the repository-local encrypted CLI keystores through `CLAUSEBID_KEYSTORE_PASSWORD`; it never writes private keys to the repository. Contract writes require separate protocol fees; escrow value must not be treated as payment for protocol fees.
 
-The browser subscribes to `accountsChanged`, `chainChanged` and `disconnect`, restores locally tracked transaction hashes after reload, and refuses to claim a parent receipt is an external payout receipt. The Playwright suite uses an explicitly test-only `VITE_E2E_FIXTURE=true` synthetic contract-state harness for recovery/error UI; production builds never set that flag. The deployed URL is separately checked against the real Studionet binding.
+The browser subscribes to `accountsChanged`, `chainChanged` and `disconnect`, restores locally tracked transaction hashes after reload, and refuses to claim a parent receipt is an external payout receipt. The claim explorer keys archived receipts by chain, deployment, beneficiary and amount; the superseded deployment is retained only as historical evidence. The Playwright suite uses an explicitly test-only `VITE_E2E_FIXTURE=true` synthetic contract-state harness for recovery/error UI; production builds never set that flag. The deployed URL is separately checked against the real Studionet binding. The production bundle and the incomplete genuine-wallet browser attempt are recorded in `evidence/studionet/frontend-verification.json`.
 
 ## Live evidence
 
