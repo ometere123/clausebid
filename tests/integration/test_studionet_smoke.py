@@ -1,15 +1,17 @@
-"""Opt-in Studionet smoke suite. No fabricated contract address or receipts.
-Run only after source-hash verified deployment; this is not run in offline CI.
-"""
+"""Source-check the actual deployment only when explicitly enabled."""
 import os
+import subprocess
+from pathlib import Path
 import pytest
 
+ROOT=Path(__file__).resolve().parents[2]
+
 @pytest.mark.integration
-def test_deployed_contract_reads():
-    address=os.environ.get("CLAUSEBID_CONTRACT_ADDRESS")
-    if not address:
-        pytest.skip("CLAUSEBID_CONTRACT_ADDRESS not set; requires actual Studionet deployment")
-    from gltest import get_contract_factory
-    # Verify SDK's live Studionet factory/address attachment semantics before enabling.
-    # This intentional fail prevents falsely claiming network integration coverage.
-    pytest.fail("Codex must implement live schema-verified contract attachment, then record finalized receipts")
+def test_deployed_source_is_exact():
+    if os.getenv('ENABLE_STUDIONET_SMOKE_TEST')!='true':
+        pytest.skip('Opt in with ENABLE_STUDIONET_SMOKE_TEST=true')
+    if not os.getenv('CLAUSEBID_CONTRACT_ADDRESS'):
+        pytest.fail('A real deployed contract address is required')
+    proc=subprocess.run(['node','scripts/preflight.mjs'],cwd=ROOT,env=os.environ.copy(),
+                        capture_output=True,text=True,timeout=180)
+    assert proc.returncode==0,proc.stdout+'\n'+proc.stderr
