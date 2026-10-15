@@ -130,8 +130,11 @@ if(cmd==='create'){
   const o=await read('get_offer',[id(),seller]);
   if(o.revealed&&o.verdict==='REVEALED')jobs.push({who:n+1<5?n+1:0,seller});
  }
- await Promise.all(jobs.map(x=>send(x.who,'begin_bid_review',[id(),x.seller],undefined,false)));
- await Promise.all(jobs.map(x=>send(x.who,'evaluate_bid',[id(),x.seller],undefined,false)));
+ // A review reservation must be finalized before its consensus call is
+ // submitted; otherwise independent transactions can be reordered and the
+ // evaluator may execute against the pre-reservation state.
+ await Promise.all(jobs.map(x=>send(x.who,'begin_bid_review',[id(),x.seller])));
+ await Promise.all(jobs.map(x=>send(x.who,'evaluate_bid',[id(),x.seller])));
 }else if(cmd==='award'){
  await send(0,'finalize_award',[id()]);
 }else if(cmd==='deliver'){
