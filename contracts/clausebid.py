@@ -66,7 +66,7 @@ class Offer:
     evidence: str
 
 class ClauseBid(gl.Contract):
-    procurements: TreeMap[u64, Procurement]
+    procurements: TreeMap[str, Procurement]
     offers: TreeMap[str, Offer]
     bidder_slots: TreeMap[str, str]
     credits: TreeMap[str, u256]
@@ -90,7 +90,7 @@ class ClauseBid(gl.Contract):
     def _auction(self, auction_id: u64) -> Procurement:
         if auction_id == u64(0) or auction_id >= self.next_id:
             raise gl.vm.UserError("unknown procurement")
-        return self.procurements[auction_id]
+        return self.procurements[str(int(auction_id))]
 
     def _key(self, auction_id: u64, seller: str) -> str:
         return str(int(auction_id)) + ":" + seller.lower()
@@ -139,7 +139,7 @@ class ClauseBid(gl.Contract):
         now = self._now()
         auction_id = self.next_id
         self.next_id = u64(int(self.next_id) + 1)
-        self.procurements[auction_id] = Procurement(
+        self.procurements[str(int(auction_id))] = Procurement(
             buyer=self._sender(), title=title, reference=reference,
             r1=r1, r2=r2, r3=r3, r4=r4,
             budget=budget_wei, bond=u256(self._bond_for(amount)),
