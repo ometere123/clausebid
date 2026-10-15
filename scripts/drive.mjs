@@ -135,6 +135,16 @@ if(cmd==='create'){
  // evaluator may execute against the pre-reservation state.
  await Promise.all(jobs.map(x=>send(x.who,'begin_bid_review',[id(),x.seller])));
  await Promise.all(jobs.map(x=>send(x.who,'evaluate_bid',[id(),x.seller])));
+}else if(cmd==='retry-evaluate'){
+ const a=await read('get_procurement',[id()]);
+ const pending=[];
+ for(let n=0;n<Number(a.bidder_count);n++){
+  const seller=await read('get_seller',[id(),n]);
+  const o=await read('get_offer',[id(),seller]);
+  if(o.verdict==='REVIEWING')pending.push(seller);
+ }
+ if(!pending.length)throw Error('No reserved unresolved bid review; do not retry an already resolved evaluation');
+ for(const seller of pending)await send(1,'evaluate_bid',[id(),seller]);
 }else if(cmd==='award'){
  await send(0,'finalize_award',[id()]);
 }else if(cmd==='deliver'){
@@ -160,6 +170,10 @@ if(cmd==='create'){
 }else if(cmd==='review'){
  await send(2,'begin_delivery_review',[id()]);
  await send(2,'review_delivery',[id()]);
+}else if(cmd==='retry-delivery-review'){
+ const a=await read('get_procurement',[id()]);
+ if(a.status!=='REVIEWING_DELIVERY')throw Error('No reserved unresolved delivery review; inspect state before retrying');
+ await send(2,'review_delivery',[id()]);
 }else if(cmd==='accept'){
  await send(0,'accept_delivery',[id()]);
 }else if(cmd==='expire'){
@@ -170,6 +184,9 @@ if(cmd==='create'){
   if(due>0n){console.log(KEYS[n], 'claiming',String(due),'wei');await send(n,'claim')}
  }
  console.log('Claim writes are not payout evidence: verify recipient GEN balance and finalized external-message receipts.');
+}else if(cmd==='duplicate-claim'){
+ try{await send(0,'claim');throw Error('duplicate claim unexpectedly succeeded');}
+ catch(error){console.log('Expected duplicate-claim rejection after receipt inspection:',String(error));}
 }else if(cmd==='verify-pending'){
  for(const entry of state.history.filter(x=>x.state==='submitted'||x.state==='finalized-failed')){
   console.log('Checking previously submitted transaction',entry.hash);

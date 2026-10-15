@@ -13,3 +13,11 @@ The final deployment operator should add:
 - CI run references and full tool versions.
 
 `session.local.json` holds reveal secrets and is excluded from git. Never publish it.
+
+Verified release artifacts:
+
+- `studionet/deployment.json` records the single source-verified deployment.
+- `studionet/source-verification.json` records the retrieved-code SHA-256 comparison.
+- `studionet/live-demo.json` records the five-wallet auction, validator findings, rejected/retried consensus transactions, correction flow, claims, emitted messages and recipient balance readbacks.
+
+The claim parent receipts expose outbound message records and the recipient balance readbacks prove the native-GEN deltas. Studionet did not expose a separate child acceptance receipt through the pinned SDK; claim records therefore remain `DISPATCHED_PENDING_EXTERNAL_SETTLEMENT` rather than being promoted to a stronger status by assumption.
