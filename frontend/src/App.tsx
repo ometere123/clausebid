@@ -78,7 +78,21 @@ export default function App(){
   }catch(e){setError('Read failed: '+errorText(e))}finally{setLoading(false)}},[loadOffers,page,selected,wallet]);
  useEffect(()=>{void refresh()},[refresh]);
  useEffect(()=>{const pending=tracked().filter(x=>x.phase==='submitted'||x.phase==='inspect-finality');if(pending.length)void Promise.allSettled(pending.map(x=>refreshTx(x.hash)));},[]);
- useEffect(()=>subscribeWallet(accounts=>{const next=accounts[0]?.toLowerCase()??'';setWallet(next);setReveal(null);setError(next?'Wallet account changed; reloading authoritative state.':'Wallet disconnected.');},chain=>{if(chain.toLowerCase()!==`0x${CHAIN_ID.toString(16)}`){setWallet('');setReveal(null);setError('Wallet switched away from Studionet 61999. Switch back before signing.');}},()=>{setWallet('');setReveal(null);setError('Wallet disconnected.')}),[]);
+ useEffect(()=>{
+  let active=true;
+  const restore=async()=>{
+   const injected=window.ethereum;if(!injected)return;
+   try{
+    const [accounts,chain]=await Promise.all([injected.request({method:'eth_accounts'}),injected.request({method:'eth_chainId'})]) as [string[],string];
+    if(!active)return;
+    const next=accounts[0]?.toLowerCase()??'';
+    if(String(chain).toLowerCase()!==`0x${CHAIN_ID.toString(16)}`){setWallet('');setReveal(null);setError(next?'Wallet is connected on the wrong network. Switch back to Studionet 61999 before signing.':'');return}
+    setWallet(next);setReveal(null);if(next)setError('');
+   }catch{if(active)setError('Wallet connection could not be restored. Reconnect the injected wallet if needed.')}
+  };
+  void restore();
+  return subscribeWallet(accounts=>{const next=accounts[0]?.toLowerCase()??'';setWallet(next);setReveal(null);setError(next?'Wallet account changed; reloading authoritative state.':'Wallet disconnected.');},chain=>{if(chain.toLowerCase()!==`0x${CHAIN_ID.toString(16)}`){setWallet('');setReveal(null);setError('Wallet switched away from Studionet 61999. Switch back before signing.');}},()=>{setWallet('');setReveal(null);setError('Wallet disconnected.')});
+ },[]);
   const connect=async()=>{try{const account=await connectWallet();setWallet(account);setReveal(null);setError('');await refresh()}catch(e){setError(errorText(e))}};
   const disconnect=()=>{setWallet('');setReveal(null);setStatus('');setError('Wallet disconnected from ClauseBid. Reconnect whenever you are ready.')};
   const copyWallet=async()=>{if(!wallet)return;let copied=false;try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(wallet);copied=true}}catch{}if(!copied){const field=document.createElement('textarea');field.value=wallet;field.setAttribute('readonly','');field.style.position='fixed';field.style.opacity='0';document.body.appendChild(field);field.select();try{copied=document.execCommand('copy')}catch{}field.remove()}if(copied){setCopiedWallet(true);window.setTimeout(()=>setCopiedWallet(false),1800)}else setError('Clipboard access was unavailable. Select the full address from My procurement dashboard.')};
