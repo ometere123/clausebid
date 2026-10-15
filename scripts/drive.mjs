@@ -147,6 +147,14 @@ if(cmd==='create'){
  'PRODUCT C — SEO TITLE: Product C customer guide. Full description: Product C has a six-month warranty and the approved product facts.',
  ].join('\n\n');
  await send(idx,'submit_delivery',[id(),text]);
+}else if(cmd==='deliver-defect'){
+ const a=await read('get_procurement',[id()]);
+ const idx=wallets.findIndex(x=>x.address.toLowerCase()===String(a.winner).toLowerCase());
+ if(idx<1)throw Error('No demo wallet won this auction');
+ // Deliberately omit two mandatory product descriptions and all SEO titles;
+ // the live fulfillment review must reject this attempt before correction.
+ const defective='PRODUCT A — A short draft without the required three complete descriptions, warranty facts, or SEO titles.';
+ await send(idx,'submit_delivery',[id(),defective]);
 }else if(cmd==='dispute'){
  await send(0,'dispute_delivery',[id()]);
 }else if(cmd==='review'){
