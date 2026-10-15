@@ -69,6 +69,8 @@ class ClauseBid(gl.Contract):
     procurements: TreeMap[str, Procurement]
     offers: TreeMap[str, Offer]
     bidder_slots: TreeMap[str, str]
+    delivery_history: TreeMap[str, str]
+    delivery_verdicts: TreeMap[str, str]
     credits: TreeMap[str, u256]
     next_id: u64
     outstanding: u256
@@ -120,6 +122,9 @@ class ClauseBid(gl.Contract):
             raw = field.encode("utf-8")
             body += str(len(raw)).encode("ascii") + b":" + raw
         return hashlib.sha256(body).hexdigest()
+
+    def _delivery_key(self, auction_id: u64, attempt: int) -> str:
+        return str(int(auction_id)) + "/delivery/" + str(attempt)
 
     def _check_text(self, text: str, limit: int) -> None:
         self._require(0 < len(text.strip()) <= limit, "invalid text length")
@@ -321,6 +326,7 @@ class ClauseBid(gl.Contract):
         self._check_text(content, 6000)
         a.deliverable = content
         a.delivery_attempts = u32(int(a.delivery_attempts) + 1)
+        self.delivery_history[self._delivery_key(auction_id,int(a.delivery_attempts))] = content
         a.response_due = u64(self._now() + BUYER_RESPONSE)
         a.delivery_review_end = u64(self._now() + BUYER_RESPONSE + WINDOW)
         a.status = "AWAITING_BUYER"
@@ -338,6 +344,7 @@ class ClauseBid(gl.Contract):
         a = self._auction(auction_id)
         self._require(self._sender() == a.buyer and
                       a.status == "AWAITING_BUYER", "not authorized or not awaiting")
+        self.delivery_verdicts[self._delivery_key(auction_id,int(a.delivery_attempts))] = "BUYER_ACCEPTED"
         self._settle_success(a)
 
     @gl.public.write
@@ -358,6 +365,7 @@ class ClauseBid(gl.Contract):
         decision = self._classify(
             [a.r1,a.r2,a.r3,a.r4],a.deliverable,a.reference,"DELIVERY_FULFILLMENT")
         statuses = decision["statuses"]
+        self.delivery_verdicts[self._delivery_key(auction_id,int(a.delivery_attempts))] = json.dumps(decision, ensure_ascii=False)
         if all(s == "PASS" for s in statuses):
             self._settle_success(a)
             return "PASS"
@@ -382,6 +390,7 @@ class ClauseBid(gl.Contract):
             self._settle_default(a)
             return "DEFAULT"
         if a.status in ("AWAITING_BUYER","REVIEW") and now >= int(a.delivery_review_end):
+            self.delivery_verdicts[self._delivery_key(auction_id,int(a.delivery_attempts))] = "REVIEW_EXPIRED_UNWOUND"
             self._credit(a.buyer,a.winning_price)
             self._credit(a.winner,a.bond)
             a.status = "UNWOUND"
@@ -406,6 +415,18 @@ class ClauseBid(gl.Contract):
     @gl.public.view
     def get_procurement(self, auction_id: u64) -> Procurement:
         return self._auction(auction_id)
+
+    @gl.public.view
+    def get_delivery_attempt(self, auction_id: u64, attempt: u32) -> str:
+        a = self._auction(auction_id)
+        self._require(1 <= int(attempt) <= int(a.delivery_attempts), "invalid delivery attempt")
+        return self.delivery_history[self._delivery_key(auction_id,int(attempt))]
+
+    @gl.public.view
+    def get_delivery_verdict(self, auction_id: u64, attempt: u32) -> str:
+        a = self._auction(auction_id)
+        self._require(1 <= int(attempt) <= int(a.delivery_attempts), "invalid delivery attempt")
+        return self.delivery_verdicts.get(self._delivery_key(auction_id,int(attempt)), "PENDING")
 
     @gl.public.view
     def get_offer(self, auction_id: u64, seller: str) -> Offer:
