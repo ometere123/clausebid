@@ -10,6 +10,7 @@ export type DeploymentIdentity={
 };
 
 export type ArchivedClaimEvidence={
+  claimIndex:number;
   identity:string;
   deployment:DeploymentIdentity;
   beneficiary:string;
@@ -60,7 +61,7 @@ type ReplacementReceipt=typeof replacementRun.transactions.claimReceiptSummaries
 const receiptByHash=new Map<string,ReplacementReceipt>(replacementRun.transactions.claimReceiptSummaries.map(x=>[x.transaction.toLowerCase(),x]));
 const balanceByBeneficiary=new Map<string,string>(Object.entries(replacementRun.settlement.recipientBalancesAfterWeiByBeneficiary).map(([k,v])=>[k.toLowerCase(),String(v)]));
 
-const makeCurrentClaim=(claim:ReplacementClaim):ArchivedClaimEvidence=>{
+const makeCurrentClaim=(claim:ReplacementClaim,claimIndex:number):ArchivedClaimEvidence=>{
   const receipt=receiptByHash.get(claim.transaction.toLowerCase());
   const verifiedReceipt=receipt&&
     receipt.chainId===CURRENT_DEPLOYMENT.chainId&&
@@ -71,6 +72,7 @@ const makeCurrentClaim=(claim:ReplacementClaim):ArchivedClaimEvidence=>{
       ? {chainId:receipt.chainId,contract:receipt.contract,status:receipt.status,result:receipt.result,leaderExecution:receipt.leaderExecution,messageType:receipt.messageType,recipient:receipt.recipient,valueWei:receipt.valueWei,onAcceptance:receipt.onAcceptance}
       : null;
   return {
+    claimIndex,
     identity:identity(CURRENT_DEPLOYMENT.chainId,CURRENT_DEPLOYMENT.contract,claim.beneficiary,claim.amountWei),
     deployment:CURRENT_DEPLOYMENT,
     beneficiary:claim.beneficiary,
@@ -85,8 +87,9 @@ const makeCurrentClaim=(claim:ReplacementClaim):ArchivedClaimEvidence=>{
 };
 
 const historicalClaims=Array.isArray(historicalRun.transactions.claims)?historicalRun.transactions.claims:[];
-export const CURRENT_CLAIMS:ArchivedClaimEvidence[]=replacementRun.transactions.claims.map(makeCurrentClaim);
-export const HISTORICAL_CLAIMS:ArchivedClaimEvidence[]=historicalClaims.map((claim:any)=>({
+export const CURRENT_CLAIMS:ArchivedClaimEvidence[]=replacementRun.transactions.claims.map((claim,claimIndex)=>makeCurrentClaim(claim,claimIndex));
+export const HISTORICAL_CLAIMS:ArchivedClaimEvidence[]=historicalClaims.map((claim:any,claimIndex)=>({
+  claimIndex,
   identity:identity(HISTORICAL_DEPLOYMENT.chainId,HISTORICAL_DEPLOYMENT.contract,claim.beneficiary,claim.amountWei),
   deployment:HISTORICAL_DEPLOYMENT,
   beneficiary:claim.beneficiary,
@@ -101,21 +104,23 @@ export const HISTORICAL_CLAIMS:ArchivedClaimEvidence[]=historicalClaims.map((cla
 
 /**
  * Match a contract claim to evidence only inside the explicitly selected
- * deployment archive. The array position is display-only and never enters the
- * identity or lookup key.
+ * deployment archive. Deployment, beneficiary and amount are always required;
+ * the optional record index is only a secondary guard for a specific rendered
+ * immutable record and is never used on its own.
  */
-export function matchArchivedClaim(claim:ContractClaimLike,deployment:EvidenceDeployment,archive:ArchivedClaimEvidence[]=CURRENT_CLAIMS):ArchivedClaimEvidence|null{
+export function matchArchivedClaim(claim:ContractClaimLike,deployment:EvidenceDeployment,archive:ArchivedClaimEvidence[]=CURRENT_CLAIMS,claimIndex?:number):ArchivedClaimEvidence|null{
   if(deployment.chainId!==CURRENT_DEPLOYMENT.chainId||normalizeAddress(deployment.contract)!==normalizeAddress(CURRENT_DEPLOYMENT.contract))return null;
   const key=identity(deployment.chainId,deployment.contract,claim.beneficiary,amount(claim.amount));
-  return archive.find(item=>item.deployment.label==='current'&&item.identity===key&&
+  return archive.find(item=>item.deployment.label==='current'&&(claimIndex===undefined||item.claimIndex===claimIndex)&&item.identity===key&&
     item.deployment.chainId===deployment.chainId&&
     normalizeAddress(item.deployment.contract)===normalizeAddress(deployment.contract)&&
     normalizeAddress(item.beneficiary)===normalizeAddress(claim.beneficiary)&&
     item.amountWei===amount(claim.amount))??null;
 }
 
-export function claimIdentity(claim:ContractClaimLike,deployment:EvidenceDeployment=CURRENT_DEPLOYMENT){
-  return identity(deployment.chainId,deployment.contract,claim.beneficiary,amount(claim.amount));
+export function claimIdentity(claim:ContractClaimLike,deployment:EvidenceDeployment=CURRENT_DEPLOYMENT,claimIndex?:number){
+  const base=identity(deployment.chainId,deployment.contract,claim.beneficiary,amount(claim.amount));
+  return claimIndex===undefined?base:`${base}:record-${claimIndex}`;
 }
 
 export function verifiedReceiptFor(claim:ContractClaimLike,deployment:EvidenceDeployment=CURRENT_DEPLOYMENT){

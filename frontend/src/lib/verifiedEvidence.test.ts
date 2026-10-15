@@ -29,7 +29,8 @@ describe('deployment-scoped claim evidence',()=>{
   it('matches by deployment, beneficiary and amount rather than claim position',()=>{
     const current=CURRENT_CLAIMS[2];
     const currentClaim={beneficiary:current.beneficiary,amount:current.amountWei};
-    expect(matchArchivedClaim(currentClaim,CURRENT_DEPLOYMENT)?.parentTransaction).toBe(current.parentTransaction);
+    expect(matchArchivedClaim(currentClaim,CURRENT_DEPLOYMENT,undefined,current.claimIndex)?.parentTransaction).toBe(current.parentTransaction);
+    expect(matchArchivedClaim(currentClaim,CURRENT_DEPLOYMENT,undefined,current.claimIndex+1)).toBeNull();
     expect(matchArchivedClaim({...currentClaim,amount:'1'},CURRENT_DEPLOYMENT)).toBeNull();
     expect(matchArchivedClaim({...currentClaim,beneficiary:'0x0000000000000000000000000000000000000001'},CURRENT_DEPLOYMENT)).toBeNull();
   });
