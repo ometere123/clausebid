@@ -2,7 +2,7 @@
 
 Never invent addresses, transaction hashes, validator votes, CI results, or recipient balances.
 
-The final deployment operator should add:
+For a new deployment or hosted run, archive:
 - contract source SHA256 and fetched deployed source SHA256;
 - deployed address and finalized deploy receipt with execution success;
 - finalized create, commit, reveal, review, award, delivery, accept/dispute, refund and claim receipts;
@@ -18,7 +18,14 @@ Verified release artifacts:
 
 - `studionet/deployment.json` records the single source-verified deployment.
 - `studionet/source-verification.json` records the retrieved-code SHA-256 comparison.
-- `studionet/live-demo.json` records the five-wallet auction, validator findings, rejected/retried consensus transactions, correction flow, claims, emitted messages and recipient balance readbacks.
+- `studionet/live-demo.json` records the historical five-wallet auction on the superseded address.
+- `studionet/live-demo-replacement.json` records the replacement-address five-wallet auction, real deadline timing, substantive findings, review disagreements and retries, correction flow, claims, emitted messages and recipient balance readbacks.
 - `studionet/evidence-matrix.md` maps security/economic claims to exact tests and finalized hosted transactions, and labels historical evidence from the superseded address.
 
-The claim parent receipts expose outbound message records and the recipient balance readbacks prove the native-GEN deltas. Studionet did not expose a separate child acceptance receipt through the pinned SDK; claim records therefore remain `DISPATCHED_PENDING_EXTERNAL_SETTLEMENT` rather than being promoted to a stronger status by assumption.
+The replacement claim parent receipts expose outbound message records and exact
+beneficiaries/values. The replacement archive also records post-claim recipient
+balance reads; because no pre-run snapshot was captured for that run, those
+reads are not presented as an independently measured balance delta. Studionet
+did not expose a separate child acceptance receipt through the pinned SDK;
+claim records therefore remain `DISPATCHED_PENDING_EXTERNAL_SETTLEMENT` rather
+than being promoted to a stronger status by assumption.

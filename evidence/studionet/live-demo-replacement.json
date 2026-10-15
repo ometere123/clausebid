@@ -1,0 +1,125 @@
+{
+  "network": "studionet",
+  "chainId": 61999,
+  "contract": "0x24f95ED58fcfa4e339C504fF388A922347757515",
+  "auctionId": 1,
+  "sourceSha256": "18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4",
+  "windows": {
+    "commitEnd": 1792052511,
+    "revealEnd": 1792053711,
+    "reviewEnd": 1792055511,
+    "masterWindowSeconds": 1800
+  },
+  "bids": [
+    {
+      "seller": "0x4ca776be78b091374c608ae16f023ca70164ecbe",
+      "priceWei": "18000000000000000000",
+      "verdict": "NONCOMPLIANT",
+      "statuses": ["UNKNOWN", "UNKNOWN", "FAIL", "FAIL"]
+    },
+    {
+      "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+      "priceWei": "25000000000000000000",
+      "verdict": "COMPLIANT",
+      "statuses": ["PASS", "PASS", "PASS", "PASS"]
+    },
+    {
+      "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+      "priceWei": "22000000000000000000",
+      "verdict": "NONCOMPLIANT",
+      "statuses": ["UNKNOWN", "UNKNOWN", "FAIL", "FAIL"]
+    },
+    {
+      "seller": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+      "priceWei": "28000000000000000000",
+      "verdict": "COMPLIANT",
+      "statuses": ["PASS", "PASS", "PASS", "PASS"]
+    }
+  ],
+  "transactions": {
+    "create": "0xcb4562c632a0356cf2ab98a087bae81afc3b6c5d39a0f216d24c41ed3abf0378",
+    "commitments": [
+      "0xcdef291a18e4c2f03cf3e6f553baed9005c44f7a23aa93036a5b42d0eaf338ef",
+      "0x53234979ddcd900de748afd8f02edc342dc2fec168563ba68d134e2827f4a05a",
+      "0x5cf6d88c4f4aed02b4282ac2eb5692a3bdf309f0bd83f1d900a6d0f405eaf351",
+      "0xd5aee02aaf413b41dcbaa367dbde223930c1f5bc709d25d6bcdf41088cf8d2e1"
+    ],
+    "reveals": [
+      "0x009b38a46ad6f05d89bd660c631685f5620848477c4bc6c2b8b3c8da0b66ff50",
+      "0x8d976e804474322328a2bf55b964a17da929567f0bacf3a965b5607248e71cef",
+      "0x7815ed7b07d283cbdf2f09e1ce7c2183721eb8b381dd0e58a77762a9a688431e",
+      "0x6ae859c952dd26943400d57d3ad544482273ea7a22c9cfeea1dc3ee4138ff7fc"
+    ],
+    "earlyReviewRejected": [
+      "0x4c581aa4bb7907f0cc7b1742e28071fa7b120e2bd21bb775d1ea6a31dec36834",
+      "0xc8551c73a0eb97180d1e4023eb91ac07b2d518eb84feafd22d8d640a37e70c59"
+    ],
+    "bidReviewReservations": [
+      "0x9818e95614af8c8005989bcbe2e2373e4d524e10271889bfb3ae4b9d76539470",
+      "0x42746650fc749e421ec2cc5e3bc2f4ac147a70ec4883d7ca53dcb82e31ea36db",
+      "0x2cc7d3cf3352189704b86fbd933f8a074f3bb853f346de9ed0e9a1faa4f68a5b",
+      "0x76e27ec0ade59af1f72079b20cb1df8f7bb46c6f797eedcf185cbf61ab539435"
+    ],
+    "bidReviewDisagreements": [
+      "0x5bbf3519293fa327807735ceebba3c02d49f1080eb3ebf56459e709909da089b",
+      "0x7d523208c2f4c863b439b1ba5cc9e75d04db8fa21d461ab0679bc499d5fa993c"
+    ],
+    "bidEvaluations": [
+      "0xe629d8d4a53707b23c0d4e49bc8417a8d51c2d42050c7fe35674f0ff1ffccaab",
+      "0xecdc313324a7ea17b3e0749b81477b19b3c740356703bf269f15628f0cce7fc",
+      "0x7506e20aa9fd822afac243d91be896614fa9dcf65df9a2e1d14f11f7dcde3c4a",
+      "0xcfe8067bb1b8e04e0ce3218ab8f8d5e4c08354d6809289d7fd231ad9f315965b"
+    ],
+    "award": "0x507e913eadf27aae7bebf5a780a538a41a745aac17103a95dfc7d21a639e401d",
+    "defectiveDelivery": "0xba3ba452edadb75e2f10a50d3b0d521d4fc5107c9c479f3c6c4ac0b290cf3707",
+    "buyerDispute": "0x983551a066386eb041e718a5da355640a573b6998e1c22509cce5d340082375c",
+    "deliveryReviewReservation": "0x59018668b9121ab977b18b4211c8d9dfad0a1df0415be8991e8899aea2e7dc24",
+    "deliveryReviewDisagreements": [
+      "0x08618760cb1b4b389d96581406c07051db0dbdf5422af87e66a561e688f49064",
+      "0x00949956294be1509cea63374b46ebf971e62c03faccdf750aac0d8a1c945378",
+      "0x44ac565fffc1ded88f36f2f9338805da7f1d4056deba2cf9f348f3daad05d8a7",
+      "0x10f1f2e92370164c563739398cb5b8e536ade95f626985ab824125d5fb9db455",
+      "0x59b2fe9a438f0e9c60b8696e37e92a61d962ec46d5a5bc0f79a95b256591436e",
+      "0x3d24814faf86818ad9e18c1dba9dcc0e8aa6ea622abed7f673db71f7004d4174",
+      "0x8dba8bd8e18f7123ad82acfb241d3985fb34903b651e7ce54258bc169e2c3f36",
+      "0x1a3d7f15dcf303f03cfd69de93e9164e6121e65ae799ad5a5230cadce756e9bd",
+      "0x179c48c73beeadf052d4d851527ee2dfe581d524e166c1fadd5220e51a87aeb1",
+      "0x81fb87a1006af3ef1e0bfcbbbaa933768c7934c07f5b8276ad3c9d28efe4565d",
+      "0x307a2aa12deb2ddbe2231c51ae3394ff8353e1093c6454b082e5d7877617cbe5",
+      "0xb8ab2a72172c401c86aa8f7f1a5b9e90e7ccc9c78287e0394ce91970ce157694",
+      "0x3431727259ea51e39abd67641fecde188f49ff2638b40ec719fe94cc912757e8",
+      "0x838a6ba5e52ce09f14ef7d531fe0beb90e2f05a4a70145d2f6854073b6880148",
+      "0x793f2fdc1028f48b6f98ac4cbe30420128d7b2118f1deb494d9c50e1d8b43975",
+      "0x5feb15a3afb94a4cd5b97da36e1a7e71bd0f5fb7ed215edc8f2d299a6a64990b",
+      "0x2c93bb2f29806ae7c57d00d8c30204c0625c2ad94072de7bac75582d6e24b31c",
+      "0x80eb5939cf1bd59ff6d76c7dafa96e000d62c8a90512f18da189dd50b9857c81",
+      "0xc49daeaa676f090dcede7da9692e9ae0dd306ac3642904086d16a7ec71cf701b",
+      "0xf70fc91ae02617880e005ff24c57eaa1d0a0099d7e883e523f4229e310b410df"
+    ],
+    "correctedDelivery": "0x06106bac5a7dfddadc3c94c554d44170238281a8093e75db0bd59a89d148a475",
+    "acceptance": "0xbc96fc914c9fc81fb9da582f3ce0a89f51981fe73df6deb80abd4c78623205f5",
+    "claims": [
+      {"beneficiary":"0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7","amountWei":"10000000000000000000","transaction":"0x8f39bbda90edd9e4474dfcc4ef20b8c8bfb7f56da773bb118443e17a960204a8"},
+      {"beneficiary":"0x4ca776be78b091374c608ae16f023ca70164ecbe","amountWei":"1750000000000000000","transaction":"0x27576f99a89d46d1a3314d303a2f46c7f2ffa1e650498839b54257dbc23695e8"},
+      {"beneficiary":"0x275c7029516e6b1b7f56fbf970c816bfc6e793d5","amountWei":"26750000000000000000","transaction":"0x0f85aa2abf6d74a7349547ca20276ff42886c3e4544aba0ab81d1a085f078b21"},
+      {"beneficiary":"0x2a9f27986ce895f5d5912a2833526c9b39009bbc","amountWei":"1750000000000000000","transaction":"0x57ce0a8e5909db28a297d5703643ad08fde7ceaa63249e546c1879f2fbb955f0"},
+      {"beneficiary":"0xc43b93e999531b4ac0737e4e7f4ebb087422b067","amountWei":"1750000000000000000","transaction":"0x6e2adbca16bf6c744cee0a6cdaca66a3354d7f5e37c0742e11e7f6a228efb671"}
+    ],
+    "duplicateClaimRejected": "0x82619bb2c32e601451980c893ef7d56db655bd334c8a334c9df02d5fef0f73c0"
+  },
+  "settlement": {
+    "economyAfter": {"claims":5,"outstandingWei":"0","dispatchedWei":"42000000000000000000","contractBalanceWei":"0"},
+    "parentReceipts": "All five claim parents FINALIZED with result 6 and leader SUCCESS.",
+    "messages": "Each claim receipt exposed one messageType 0 with the exact beneficiary and value; onAcceptance was false.",
+    "recipientBalancesAfterWei": {
+      "buyer": "10000000000000000000",
+      "sellerA": "2000000000000000002",
+      "sellerB": "52000000000000000002",
+      "sellerC": "2000000000000000002",
+      "sellerD": "2000000000000000002"
+    },
+    "childAcceptance": "Not exposed by the pinned Studionet RPC/SDK; claim records remain DISPATCHED_PENDING_EXTERNAL_SETTLEMENT.",
+    "ambiguousTransferRetried": false
+  },
+  "finalState": {"status":"SETTLED","winner":"0x275c7029516e6b1b7f56fbf970c816bfc6e793d5","winningPriceWei":"25000000000000000000","deliveryAttempts":2}
+}

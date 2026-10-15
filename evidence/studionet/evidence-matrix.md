@@ -10,14 +10,29 @@ GEN settlement.
 | Claim | Evidence | Finalized transaction |
 |---|---|---|
 | Current source is deployed exactly | `scripts/preflight.mjs`; `source-verification.json` | `0x3e2cfa63e81b509cda9297ebe48d60516c5370682a8c0458d94d773d2bf7e408` — FINALIZED, MAJORITY_AGREE, leader SUCCESS |
-| Buyer response deadline is enforced | `tests/direct/test_state_machine.py::test_buyer_cannot_accept_after_response_window` | New current deployment above; no funded auction has been run on the replacement yet |
+| Buyer response deadline is enforced | `tests/direct/test_state_machine.py::test_buyer_cannot_accept_after_response_window`; replacement run accepted within the response deadline | `0xbc96fc914c9fc81fb9da582f3ce0a89f51981fe73df6deb80abd4c78623205f5` |
 
 ## Funded hosted demonstration
 
-The following rows are the preserved five-wallet run on the superseded source-
-verified deployment. It remains valid historical evidence for the unchanged
-auction, consensus, accounting and outbound-message paths; the replacement was
-necessary only for the late buyer-acceptance defect documented in the manifest.
+The replacement-address run is the current release evidence. The superseded
+run remains archived below for provenance and comparison.
+
+| Claim | Test/readback | Finalized transaction |
+|---|---|---|
+| Replacement funded procurement and four immutable clauses | `live-demo-replacement.json` create, commitment and funding records | Create `0xcb4562c632a0356cf2ab98a087bae81afc3b6c5d39a0f216d24c41ed3abf0378`; four commitment hashes in the replacement evidence |
+| Exact reveals and deadline enforcement | Four finalized reveal receipts; early review calls rejected before `reveal_end` | Reveal hashes and early-rejection hashes in `live-demo-replacement.json` |
+| Substantive eligibility rejects exclusions and conditional pricing | Per-clause statuses and quotes in replacement evidence | Bid evaluation hashes `0xe629d8d4a53707b23c0d4e49bc8417a8d51c2d42050c7fe35674f0ff1ffccaab`, `0xecdc313324a7ea17b3e0749b81477b19b3c740356703bf269f15628f0cce7fc`, `0x7506e20aa9fd822afac243d91be896614fa9dcf65df9a2e1d14f11f7dcde3c4a`, `0xcfe8067bb1b8e04e0ce3218ab8f8d5e4c08354d6809289d7fd231ad9f315965b` |
+| Deterministic lowest compliant winner | Final state winner and 25 GEN price | `0x507e913eadf27aae7bebf5a780a538a41a745aac17103a95dfc7d21a639e401d` |
+| Defective delivery, neutral review recovery, correction and acceptance | Two attempts; review disagreement receipts and final PASS path | Defect `0xba3ba452edadb75e2f10a50d3b0d521d4fc5107c9c479f3c6c4ac0b290cf3707`; final review `0xf70fc91ae02617880e005ff24c57eaa1d0a0099d7e883e523f4229e310b410df`; corrected delivery `0x06106bac5a7dfddadc3c94c554d44170238281a8093e75db0bd59a89d148a475`; acceptance `0xbc96fc914c9fc81fb9da582f3ce0a89f51981fe73df6deb80abd4c78623205f5` |
+| Replacement claim liabilities are conserved | Five immutable claims; economy after settlement | Five claim hashes and exact beneficiaries/amounts in `live-demo-replacement.json`; `outstandingWei=0`, `dispatchedWei=42 GEN`, `contractBalanceWei=0` |
+| Native GEN outbound messages and recipient readbacks | Parent receipts, message values and post-claim account reads | Same five replacement claim parents; child acceptance was not exposed by the pinned SDK |
+| Duplicate claim fails without a second entitlement | Finalized failed duplicate claim receipt; claims remain five | `0x82619bb2c32e601451980c893ef7d56db655bd334c8a334c9df02d5fef0f73c0` |
+
+### Superseded funded demonstration
+
+The following rows preserve the original five-wallet run on the superseded
+source-verified deployment. It remains historical evidence, not current-address
+evidence.
 
 | Claim | Test/readback | Finalized transaction |
 |---|---|---|

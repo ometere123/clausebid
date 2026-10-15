@@ -44,7 +44,7 @@ async function loadAccount(index){
 }
 const wallets=await Promise.all(KEYS.map((_,index)=>loadAccount(index)));
 const clients=wallets.map(account=>createClient({chain:studionet,account}));
-const FILE='evidence/session.local.json';
+const FILE=process.env.CLAUSEBID_SESSION_FILE ?? 'evidence/session.local.json';
 const state=fs.existsSync(FILE)?JSON.parse(fs.readFileSync(FILE,'utf8')):{contract:ADDRESS,chain:61999,history:[],reveal:{}};
 if(state.contract&&state.contract.toLowerCase()!==ADDRESS.toLowerCase()||state.chain!==61999)throw Error('Session file binds a different contract or chain');
 const persist=()=>{fs.mkdirSync(path.dirname(FILE),{recursive:true});fs.writeFileSync(FILE,JSON.stringify(state,null,2),{mode:0o600})};
@@ -132,9 +132,11 @@ if(cmd==='create'){
  }
  // A review reservation must be finalized before its consensus call is
  // submitted; otherwise independent transactions can be reordered and the
- // evaluator may execute against the pre-reservation state.
- await Promise.all(jobs.map(x=>send(x.who,'begin_bid_review',[id(),x.seller])));
- await Promise.all(jobs.map(x=>send(x.who,'evaluate_bid',[id(),x.seller])));
+ // evaluator may execute against the pre-reservation state. Keep the writes
+ // sequential for one auction: Studio can finalize concurrent reservations
+ // against stale BIDDING snapshots and return finalized execution failures.
+ for(const x of jobs)await send(x.who,'begin_bid_review',[id(),x.seller]);
+ for(const x of jobs)await send(x.who,'evaluate_bid',[id(),x.seller]);
 }else if(cmd==='retry-evaluate'){
  const a=await read('get_procurement',[id()]);
  const pending=[];
@@ -144,7 +146,11 @@ if(cmd==='create'){
   if(o.verdict==='REVIEWING')pending.push(seller);
  }
  if(!pending.length)throw Error('No reserved unresolved bid review; do not retry an already resolved evaluation');
- for(const seller of pending)await send(1,'evaluate_bid',[id(),seller]);
+ for(const seller of pending){
+  const current=await read('get_offer',[id(),seller]);
+  if(current.verdict!=='REVIEWING')continue;
+  await send(1,'evaluate_bid',[id(),seller]);
+ }
 }else if(cmd==='award'){
  await send(0,'finalize_award',[id()]);
 }else if(cmd==='deliver'){
@@ -173,7 +179,9 @@ if(cmd==='create'){
 }else if(cmd==='retry-delivery-review'){
  const a=await read('get_procurement',[id()]);
  if(a.status!=='REVIEWING_DELIVERY')throw Error('No reserved unresolved delivery review; inspect state before retrying');
- await send(2,'review_delivery',[id()]);
+ const reviewWho=Number(process.env.CLAUSEBID_REVIEW_WALLET_INDEX ?? 2);
+ if(!Number.isInteger(reviewWho)||reviewWho<0||reviewWho>4)throw Error('CLAUSEBID_REVIEW_WALLET_INDEX must be 0..4');
+ await send(reviewWho,'review_delivery',[id()]);
 }else if(cmd==='accept'){
  await send(0,'accept_delivery',[id()]);
 }else if(cmd==='expire'){
