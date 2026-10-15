@@ -6,29 +6,29 @@ Clause-aware, bonded, escrow-funded reverse procurement for **public, bounded di
 
 ## Status
 
-This repository is a **source implementation awaiting GenVM lint/Direct Mode/Studionet compatibility testing and end-to-end deployment verification**. An attractive interface, downloaded code, and compiled Python are not evidence of a valid live contract. No claim of a deployed contract or proven recipient payout is made.
+The source implementation is pinned to the required Studionet toolchain and is exercised by GenVM lint, Direct Mode state-machine tests, commitment-vector tests, and the frontend build/tests. Live deployment and payout claims are recorded only in `evidence/studionet/` after receipt and recipient-balance verification; Direct Mode is not presented as live validator or transfer evidence.
 
 ## Contract behavior
 
 1. Buyer creates four immutable requirements and reference facts, deposits 5–100 GEN.
 2. Sellers each deposit a refundable 5%-of-budget bond (0.5–5 GEN) and commit a SHA-256 hash binding network, contract, auction, wallet, price, terms and a 32-byte random salt.
 3. After a 10-minute commit period, sellers reveal original bids during a 20-minute reveal period.
-4. For the next 30 minutes, anyone can initiate per-bid compliance assessments; GenLayer validators independently re-evaluate all four material requirements.
-5. After all revealed offers are reviewed or the review cutoff passes, deterministic code awards the lowest-price COMPLIANT bid. Ties go to the earliest commitment.
-6. Winner submits public text within 30 minutes. Buyer may accept within 10 minutes; otherwise seller can request consensus review. Two 20-minute corrections are available for material defects.
+4. For the next 30 minutes, anyone can reserve each revealed bid for review. GenLayer validators independently re-evaluate all four material requirements. A reserved review may finalize after the application cutoff; an unresolved reservation cannot be bypassed until its explicit grace period expires.
+5. After all revealed offers are reviewed, or after the cutoff plus review grace, deterministic code awards the lowest-price COMPLIANT bid. Ties go to the earliest commitment. Unresolved reservations fail closed.
+6. Winner submits public text within 30 minutes. Buyer may accept within 10 minutes; otherwise any keeper can reserve an independent fulfillment review. Two 20-minute corrections are available for material defects. A review reserved before its deadline is protected from expiry races; a stale reservation can be cancelled after grace.
 7. Seller claims successful escrow payment + bond. Losing revealed bidders reclaim bonds; buyer claims unspent budget. Default/no-award/unwind paths allocate liabilities deterministically.
 8. Every claim is single-use. Outbound transfers to EOAs emit on finalization; ambiguous failed transfers **must not** be blindly retried.
 
 ## Development
 
 ```sh
-npm install                       # repository-local genlayer@0.39.1
-python3.12 -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-genvm-lint check contracts/clausebid.py
-pytest tests/direct/ -v
-npm install --prefix frontend
+npm ci                            # repository-local genlayer@0.39.1 and genlayer-js@1.1.8
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --require-hashes -r requirements.lock
+genvm-lint check contracts/clausebid.py --json
+python -m pytest -q tests
+npm ci --prefix frontend
 npm run build --prefix frontend
 npm run test --prefix frontend
 ```
@@ -37,15 +37,25 @@ Copy `frontend/.env.example` to `frontend/.env`, then populate **an actual verif
 
 Only connect an injected EIP-1193 wallet to Studionet. Private keys used by CLI scripts stay in ignored `.env` files. Contract writes require separate protocol fees; escrow value must not be treated as payment for protocol fees.
 
-## Real network handoff
+## Live evidence
 
-The deployment operator must first verify the exact Python dependency header against pinned CLI 0.39.1; execute full GenVM lint and Direct Mode tests; fix runtime/storage/schema discrepancies; run fee and semantic-convergence profiling; test every economic path with five separate wallets; deploy with source hash and transcript; verify each decision's FINALIZED + FINISHED_WITH_RETURN outcome and the external native GEN recipient transfer; and publish the frontend only after successful contract-read/write validation.
+Use the repository-local CLI entry point, never a globally installed version:
+
+```sh
+node node_modules/genlayer/dist/index.js network set studionet
+node node_modules/genlayer/dist/index.js network info
+node node_modules/genlayer/dist/index.js deploy --contract contracts/clausebid.py
+node scripts/preflight.mjs
+node --env-file=.env scripts/drive.mjs inspect
+```
+
+The driver queues independent wallet submissions during the short commitment window, records every transaction ID in the ignored `evidence/session.local.json`, and requires `FINALIZED` plus `FINISHED_WITH_RETURN` before treating a write as successful. `claim` finality is still not payout evidence: inspect the immutable claim record, outbound message/child receipt, and recipient balance delta.
 
 Do not accept a finality flag without execution success. Do not turn timed-out review transactions into automatic approvals. Direct Mode mocks are not external validator evidence. A failed outbound value message does not automatically restore money. There is no privileged administrator rescue path.
 
 ## Time control
 
-Application phase durations derive from the single `WINDOW=1800` constant: 10-minute commit, 20-minute reveal and 30-minute review/delivery/recovery. The underlying chain's consensus/appeal/finalization periods are **not controlled by this variable**. Do not change the master window for a deployment with unsettled procurements.
+Application phase durations derive from the single `WINDOW=1800` constant: 10-minute commit, 20-minute reveal and 30-minute review/delivery/recovery. The underlying chain's consensus/appeal/finalization periods are **not controlled by this variable**. A timely reserved review may finalize after its application deadline; expiry and cancellation cannot create a contradictory economic outcome while that reservation remains in flight. Do not change the master window for a deployment with unsettled procurements.
 
 ## Auditing boundaries
 
@@ -53,7 +63,7 @@ The product relies on the buyer's frozen product facts and signed offers; it doe
 
 ## Public API
 
-`create_procurement`, `commit_bid`, `reveal_bid`, `evaluate_bid`, `finalize_award`, `submit_delivery`, `accept_delivery`, `dispute_delivery`, `review_delivery`, `expire_delivery`, `claim`. Reads: `get_procurement`, `get_offer`, `get_seller`, `get_credit`, `get_economy`, `get_count`.
+`create_procurement`, `commit_bid`, `reveal_bid`, `begin_bid_review`, `evaluate_bid`, `cancel_bid_review`, `finalize_award`, `submit_delivery`, `accept_delivery`, `dispute_delivery`, `begin_delivery_review`, `review_delivery`, `expire_delivery`, `claim`. Reads: `get_procurement`, `get_offer`, `get_seller`, `get_credit`, `get_claim`, `get_delivery_attempt`, `get_delivery_verdict`, `get_economy`, `get_count`.
 
 ## Source references
 
@@ -63,4 +73,4 @@ The product relies on the buyer's frozen product facts and signed offers; it doe
 - [Studionet transactions](https://docs.genlayer.com/developers/decentralized-applications/writing-data)
 - [Direct Mode](https://docs.genlayer.com/developers/intelligent-contracts/testing)
 
-**Note:** CLI-driven funded demonstration and final deployment/evidence will be completed and documented after verification, not fabricated in this repository.
+Deployment-specific addresses, source hashes, receipts, and recipient readbacks belong in `evidence/studionet/`; absent evidence is reported as absent rather than inferred from a finalized parent transaction.

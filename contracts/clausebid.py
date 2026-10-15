@@ -12,10 +12,13 @@ import json
 
 GEN = 10 ** 18
 WINDOW = 1800
+CHAIN_ID = 61999
 COMMIT_SECONDS = WINDOW // 3
 REVEAL_SECONDS = WINDOW - COMMIT_SECONDS
 BUYER_RESPONSE = WINDOW // 3
 CORRECTION_SECONDS = WINDOW * 2 // 3
+REVIEW_GRACE_SECONDS = WINDOW
+DELIVERY_REVIEW_GRACE_SECONDS = WINDOW
 MAX_BIDS = 12
 MIN_BUDGET = 5 * GEN
 MAX_BUDGET = 100 * GEN
@@ -45,6 +48,7 @@ class Procurement:
     delivery_due: u64
     response_due: u64
     delivery_review_end: u64
+    delivery_review_started: u64
     bidder_count: u32
     delivery_attempts: u32
     winner: str
@@ -64,6 +68,14 @@ class Offer:
     revealed: bool
     verdict: str
     evidence: str
+    review_started: u64
+
+@allow_storage
+@dataclass
+class ClaimRecord:
+    beneficiary: str
+    amount: u256
+    status: str
 
 class ClauseBid(gl.Contract):
     procurements: TreeMap[str, Procurement]
@@ -72,6 +84,7 @@ class ClauseBid(gl.Contract):
     delivery_history: TreeMap[str, str]
     delivery_verdicts: TreeMap[str, str]
     credits: TreeMap[str, u256]
+    claims: TreeMap[str, ClaimRecord]
     next_id: u64
     outstanding: u256
     dispatched: u256
@@ -88,6 +101,9 @@ class ClauseBid(gl.Contract):
 
     def _sender(self) -> str:
         return str(gl.message.sender_address).lower()
+
+    def _require_network(self) -> None:
+        self._require(int(gl.message.chain_id) == CHAIN_ID, "wrong network")
 
     def _auction(self, auction_id: u64) -> Procurement:
         if auction_id == u64(0) or auction_id >= self.next_id:
@@ -134,6 +150,7 @@ class ClauseBid(gl.Contract):
     def create_procurement(self, title: str, reference: str,
                            r1: str, r2: str, r3: str, r4: str,
                            budget_wei: u256) -> u64:
+        self._require_network()
         self._check_text(title, 100)
         self._check_text(reference, 2000)
         for clause in (r1, r2, r3, r4):
@@ -152,7 +169,8 @@ class ClauseBid(gl.Contract):
             reveal_end=u64(now + COMMIT_SECONDS + REVEAL_SECONDS),
             review_end=u64(now + COMMIT_SECONDS + REVEAL_SECONDS + WINDOW),
             delivery_due=u64(0), response_due=u64(0),
-            delivery_review_end=u64(0), bidder_count=u32(0),
+            delivery_review_end=u64(0), delivery_review_started=u64(0),
+            bidder_count=u32(0),
             delivery_attempts=u32(0), winner="", winning_price=u256(0),
             deliverable="", status="BIDDING",
         )
@@ -161,6 +179,7 @@ class ClauseBid(gl.Contract):
 
     @gl.public.write.payable
     def commit_bid(self, auction_id: u64, digest: str) -> None:
+        self._require_network()
         a = self._auction(auction_id)
         self._require(a.status == "BIDDING" and self._now() < int(a.commit_end), "commit phase closed")
         seller = self._sender()
@@ -173,13 +192,15 @@ class ClauseBid(gl.Contract):
         position = a.bidder_count
         self.offers[key] = Offer(seller=seller, commitment=digest, price=u256(0),
                                  terms="", bond=a.bond, position=position,
-                                 revealed=False, verdict="COMMITTED", evidence="")
+                                 revealed=False, verdict="COMMITTED", evidence="",
+                                 review_started=u64(0))
         self.bidder_slots[self._slot(auction_id, int(position))] = seller
         a.bidder_count = u32(int(position) + 1)
         self.outstanding += a.bond
 
     @gl.public.write
     def reveal_bid(self, auction_id: u64, price_wei: u256, terms: str, salt: str) -> None:
+        self._require_network()
         a = self._auction(auction_id)
         now = self._now()
         self._require(a.status == "BIDDING" and
@@ -197,6 +218,38 @@ class ClauseBid(gl.Contract):
         o.terms = terms
         o.revealed = True
         o.verdict = "REVEALED"
+
+    @gl.public.write
+    def begin_bid_review(self, auction_id: u64, seller: str) -> None:
+        """Reserve a revealed bid before starting validator consensus."""
+        self._require_network()
+        a = self._auction(auction_id)
+        now = self._now()
+        self._require(a.status == "BIDDING" and
+                      int(a.reveal_end) <= now < int(a.review_end),
+                      "review phase closed")
+        key = self._key(auction_id, seller)
+        self._require(key in self.offers, "unknown bidder")
+        o = self.offers[key]
+        self._require(o.revealed and o.verdict == "REVEALED", "bid not reviewable")
+        o.review_started = u64(now)
+        o.verdict = "REVIEWING"
+
+    @gl.public.write
+    def cancel_bid_review(self, auction_id: u64, seller: str) -> None:
+        """Fail closed after a reserved review remains unresolved through grace."""
+        self._require_network()
+        a = self._auction(auction_id)
+        now = self._now()
+        self._require(a.status == "BIDDING" and
+                      now >= int(a.review_end) + REVIEW_GRACE_SECONDS,
+                      "review cancellation not available")
+        key = self._key(auction_id, seller)
+        self._require(key in self.offers, "unknown bidder")
+        o = self.offers[key]
+        self._require(o.verdict == "REVIEWING", "bid review not in flight")
+        o.verdict = "UNCERTAIN"
+        o.evidence = "REVIEW_CANCELLED_AFTER_GRACE"
 
     def _classify(self, requirements: list[str], evidence: str, reference: str,
                   purpose: str) -> dict:
@@ -255,14 +308,18 @@ class ClauseBid(gl.Contract):
 
     @gl.public.write
     def evaluate_bid(self, auction_id: u64, seller: str) -> str:
+        self._require_network()
         a = self._auction(auction_id)
         now = self._now()
-        self._require(a.status == "BIDDING" and
-                      int(a.reveal_end) <= now < int(a.review_end), "review phase closed")
+        self._require(a.status == "BIDDING" and int(a.reveal_end) <= now,
+                      "review phase closed")
         key = self._key(auction_id, seller)
         self._require(key in self.offers, "unknown bidder")
         o = self.offers[key]
-        self._require(o.revealed and o.verdict == "REVEALED", "bid not reviewable")
+        self._require(o.revealed and o.verdict == "REVIEWING", "bid not reviewable")
+        self._require(int(o.review_started) <= int(a.review_end), "review was not timely reserved")
+        self._require(now < int(a.review_end) or int(o.review_started) > 0,
+                      "review was not timely reserved")
         findings = self._classify([a.r1,a.r2,a.r3,a.r4],o.terms,a.reference,"BID_COMPLIANCE")
         statuses = findings["statuses"]
         o.verdict = ("COMPLIANT" if all(s == "PASS" for s in statuses)
@@ -272,6 +329,7 @@ class ClauseBid(gl.Contract):
 
     @gl.public.write
     def finalize_award(self, auction_id: u64) -> str:
+        self._require_network()
         a = self._auction(auction_id)
         self._require(a.status == "BIDDING" and self._now() >= int(a.reveal_end),
                       "auction is not awardable")
@@ -283,6 +341,7 @@ class ClauseBid(gl.Contract):
         for i in range(int(a.bidder_count)):
             seller = self.bidder_slots[self._slot(auction_id,i)]
             o = self.offers[self._key(auction_id,seller)]
+            self._require(o.verdict != "REVIEWING", "review still in flight")
             if o.revealed and o.verdict == "REVEALED" and not cutoff:
                 raise gl.vm.UserError("unreviewed offer; wait for review cutoff")
             if not o.revealed:
@@ -318,6 +377,7 @@ class ClauseBid(gl.Contract):
 
     @gl.public.write
     def submit_delivery(self, auction_id: u64, content: str) -> None:
+        self._require_network()
         a = self._auction(auction_id)
         self._require(self._sender() == a.winner, "only winner delivers")
         self._require(a.status in ("AWARDED","CORRECTION") and
@@ -329,6 +389,7 @@ class ClauseBid(gl.Contract):
         self.delivery_history[self._delivery_key(auction_id,int(a.delivery_attempts))] = content
         a.response_due = u64(self._now() + BUYER_RESPONSE)
         a.delivery_review_end = u64(self._now() + BUYER_RESPONSE + WINDOW)
+        a.delivery_review_started = u64(0)
         a.status = "AWAITING_BUYER"
 
     def _settle_success(self, a: Procurement) -> None:
@@ -339,8 +400,14 @@ class ClauseBid(gl.Contract):
         self._credit(a.buyer,u256(int(a.winning_price)+int(a.bond)))
         a.status = "DEFAULTED"
 
+    def _settle_unwind(self, a: Procurement) -> None:
+        self._credit(a.buyer,a.winning_price)
+        self._credit(a.winner,a.bond)
+        a.status = "UNWOUND"
+
     @gl.public.write
     def accept_delivery(self, auction_id: u64) -> None:
+        self._require_network()
         a = self._auction(auction_id)
         self._require(self._sender() == a.buyer and
                       a.status == "AWAITING_BUYER", "not authorized or not awaiting")
@@ -349,6 +416,7 @@ class ClauseBid(gl.Contract):
 
     @gl.public.write
     def dispute_delivery(self, auction_id: u64) -> None:
+        self._require_network()
         a = self._auction(auction_id)
         self._require(self._sender() == a.buyer and
                       a.status == "AWAITING_BUYER" and
@@ -356,12 +424,26 @@ class ClauseBid(gl.Contract):
         a.status = "REVIEW"
 
     @gl.public.write
-    def review_delivery(self, auction_id: u64) -> str:
+    def begin_delivery_review(self, auction_id: u64) -> None:
+        """Reserve fulfillment review before invoking validator consensus."""
+        self._require_network()
         a = self._auction(auction_id)
-        self._require(a.status in ("AWAITING_BUYER","REVIEW"), "no reviewable delivery")
-        self._require(self._now() < int(a.delivery_review_end), "review window closed")
+        now = self._now()
+        self._require(a.status in ("AWAITING_BUYER", "REVIEW"),
+                      "no reviewable delivery")
+        self._require(now < int(a.delivery_review_end), "review window closed")
         if a.status == "AWAITING_BUYER":
-            self._require(self._now() >= int(a.response_due), "buyer response still open")
+            self._require(now >= int(a.response_due), "buyer response still open")
+        a.delivery_review_started = u64(now)
+        a.status = "REVIEWING_DELIVERY"
+
+    @gl.public.write
+    def review_delivery(self, auction_id: u64) -> str:
+        self._require_network()
+        a = self._auction(auction_id)
+        self._require(a.status == "REVIEWING_DELIVERY", "no reviewable delivery")
+        self._require(int(a.delivery_review_started) <= int(a.delivery_review_end),
+                      "review was not timely reserved")
         decision = self._classify(
             [a.r1,a.r2,a.r3,a.r4],a.deliverable,a.reference,"DELIVERY_FULFILLMENT")
         statuses = decision["statuses"]
@@ -377,28 +459,32 @@ class ClauseBid(gl.Contract):
             a.delivery_due = u64(self._now() + CORRECTION_SECONDS)
             return "CORRECTION"
         # Inconclusive material judgment: neutral unwind.
-        self._credit(a.buyer,a.winning_price)
-        self._credit(a.winner,a.bond)
-        a.status = "UNWOUND"
+        self._settle_unwind(a)
         return "UNWOUND"
 
     @gl.public.write
     def expire_delivery(self, auction_id: u64) -> str:
+        self._require_network()
         a = self._auction(auction_id)
         now = self._now()
         if a.status in ("AWARDED","CORRECTION") and now >= int(a.delivery_due):
             self._settle_default(a)
             return "DEFAULT"
+        if a.status == "REVIEWING_DELIVERY":
+            self._require(now >= int(a.delivery_review_end) + DELIVERY_REVIEW_GRACE_SECONDS,
+                          "review still in flight")
+            self.delivery_verdicts[self._delivery_key(auction_id,int(a.delivery_attempts))] = "REVIEW_CANCELLED_AFTER_GRACE"
+            self._settle_unwind(a)
+            return "UNWOUND"
         if a.status in ("AWAITING_BUYER","REVIEW") and now >= int(a.delivery_review_end):
             self.delivery_verdicts[self._delivery_key(auction_id,int(a.delivery_attempts))] = "REVIEW_EXPIRED_UNWOUND"
-            self._credit(a.buyer,a.winning_price)
-            self._credit(a.winner,a.bond)
-            a.status = "UNWOUND"
+            self._settle_unwind(a)
             return "UNWOUND"
         raise gl.vm.UserError("no expired delivery to recover")
 
     @gl.public.write
     def claim(self) -> u256:
+        self._require_network()
         sender = self._sender()
         due = self.credits.get(sender,u256(0))
         self._require(int(due) > 0, "nothing claimable")
@@ -407,6 +493,11 @@ class ClauseBid(gl.Contract):
         # ambiguous external transfer or recreate this entitlement.
         self.credits[sender] = u256(0)
         self.outstanding = u256(int(self.outstanding)-int(due))
+        self.claims[str(int(self.claim_count))] = ClaimRecord(
+            beneficiary=sender,
+            amount=due,
+            status="DISPATCHED_PENDING_EXTERNAL_SETTLEMENT",
+        )
         self.dispatched += due
         self.claim_count = u64(int(self.claim_count)+1)
         _EOA(Address(sender)).emit_transfer(value=due)
@@ -427,6 +518,13 @@ class ClauseBid(gl.Contract):
         a = self._auction(auction_id)
         self._require(1 <= int(attempt) <= int(a.delivery_attempts), "invalid delivery attempt")
         return self.delivery_verdicts.get(self._delivery_key(auction_id,int(attempt)), "PENDING")
+
+    @gl.public.view
+    def get_claim(self, claim_id: u64) -> ClaimRecord:
+        key = str(int(claim_id))
+        if key not in self.claims:
+            raise gl.vm.UserError("unknown claim")
+        return self.claims[key]
 
     @gl.public.view
     def get_offer(self, auction_id: u64, seller: str) -> Offer:

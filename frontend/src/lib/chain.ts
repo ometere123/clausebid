@@ -58,15 +58,18 @@ export async function write(account:string,w:Write,onChange?:(s:string)=>void):P
   }
   const client:any=createClient({chain:studionet,account:account as `0x${string}`,provider:provider as any});
   await client.connect('studionet');
-  const call={address:asAddr(),functionName:w.functionName,args:w.args??[],...(w.value!==undefined?{value:w.value}:{})};
-  onChange?.('Estimating transaction fees');
-  const fees=await client.estimateTransactionFeesForWrite(call);
+  const call={address:asAddr(),functionName:w.functionName,args:w.args??[],value:w.value??0n};
+  // genlayer-js@1.1.8 estimates the consensus transaction internally and
+  // passes the native value through to the contract. There is no
+  // estimateTransactionFeesForWrite/writeContract({ fees }) API in the pinned
+  // SDK; using that shape silently breaks every wallet write at runtime.
+  onChange?.('Preparing transaction and protocol fee estimate');
   onChange?.('Awaiting wallet signature');
-  const hash:string=await client.writeContract({...call,fees:{distribution:fees.distribution,feeValue:fees.feeValue}});
+  const hash:string=await client.writeContract(call);
   track({hash,action:w.functionName,phase:'submitted',timestamp:Date.now()});
   onChange?.('Submitted '+hash+'. Waiting for actual GenLayer finalization');
   try{
-    const receipt=await client.waitForFinalization({hash});
+    const receipt=await client.waitForTransactionReceipt({hash,status:'FINALIZED'});
     const success=isSuccessful(receipt);
     track({hash,action:w.functionName,phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(receipt).slice(0,2000)});
     if(!success)throw new Error('Finalized transaction did not execute successfully: '+hash);
@@ -77,7 +80,7 @@ export async function write(account:string,w:Write,onChange?:(s:string)=>void):P
   return hash;
 }
 export async function refreshTx(hash:string):Promise<void>{
-  const result:any=await reader.waitForFinalization({hash});
+  const result:any=await reader.waitForTransactionReceipt({hash,status:'FINALIZED'});
   const success=isSuccessful(result);
   const old=tracked().find(t=>t.hash===hash);
   track({hash,action:old?.action||'unknown',phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(result).slice(0,2000)});

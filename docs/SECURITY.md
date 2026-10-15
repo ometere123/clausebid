@@ -1,6 +1,6 @@
 # ClauseBid security and trust boundaries
 
-This document describes required behavior and limitations of the current source implementation. It is not a completed audit.
+This document records the source audit boundary, enforced invariants, and evidence still required for live Studionet settlement. It does not treat lint or Direct Mode as proof of live validator independence or recipient payment.
 
 ## Actors and incentives
 
@@ -20,6 +20,8 @@ This document describes required behavior and limitations of the current source 
 6. One claim per credit consumes credit before emitting its single native GEN transfer.
 7. A finalized claim receipt does not, by itself, prove external EOA payment. Ambiguous outbound value is non-retryable without a protocol-supported authoritative recovery path.
 8. A queued, timely transaction may finalize after an application deadline. GenLayer's actual recipient ordering must be independently confirmed before relying on expiry.
+9. An auction award cannot finalize while any revealed offer is in `REVIEWING`; a delivery unwind cannot finalize while fulfillment is in `REVIEWING_DELIVERY` before the explicit grace period.
+10. Each dispatched claim has a sequential immutable record containing its beneficiary, amount, and pending external-settlement status. The record is not a promise that the recipient has already received GEN.
 
 ## Concrete attacks
 
@@ -35,12 +37,12 @@ This document describes required behavior and limitations of the current source 
 - Fake explorer state: client must read finalized contract state and distinguish child-message settlement from parent execution.
 - Duplicate claim on an ambiguous transfer: permanently consumed claim prevents double dispatch.
 
-## Known integration gates
+## Live verification gates
 
 - Benchmark 10-minute commitment against Studionet's actual deployment and finalization latency. If the network cannot finalize funded procurement early enough for sellers to commit, the locked short period is not operationally viable; do not conceal or bypass this.
 - Prove deadline cutoff behavior against queued/stale transactions.
 - Prove all GEN transfer receipts and recipient balance deltas. Studionet is a development simulation, not mainnet economic custody.
-- Verify GenVM supports the Python storage dataclasses, dictionary output, hashing and custom validator pattern.
+- Verify the deployed GenVM supports the Python storage dataclasses, dictionary output, hashing and custom validator pattern.
 - Profile bid-review validator disagreement and protocol fees for each call.
 
 ## Non-goals

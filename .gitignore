@@ -6,6 +6,8 @@ dist/
 __pycache__/
 .pytest_cache/
 .venv/
+.venv312/
+*.tsbuildinfo
 *.pyc
 playwright-report/
 test-results/

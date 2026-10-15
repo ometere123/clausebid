@@ -47,15 +47,14 @@ function safe(v){return JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString()
 async function send(who,method,args=[],value,wait=true){
  const client=clients[who];
  const call={address:ADDRESS,functionName:method,args,...(value===undefined?{}:{value})};
- const estimate=await client.estimateTransactionFeesForWrite(call);
  console.log('Initiating:',KEYS[who],method,'deposit_wei='+String(value??0n));
- const hash=await client.writeContract({...call,fees:{distribution:estimate.distribution,feeValue:estimate.feeValue}});
+ const hash=await client.writeContract({...call,value:value??0n});
  const entry={wallet:KEYS[who],method,hash,submittedAt:new Date().toISOString(),state:'submitted'};
  state.history.push(entry);
  persist();
  if(!wait){console.log('Queued without blocking subsequent participants:',hash);return hash;}
  console.log('GenLayer tx ID:',hash,'waiting for FINALIZED + execution success');
- const receipt=await client.waitForFinalization({hash});
+ const receipt=await client.waitForTransactionReceipt({hash,status:'FINALIZED'});
  const ok=isSuccessful(receipt);
  entry.state=ok?'finalized-success':'finalized-failed';
  entry.result=safe(receipt).slice(0,1500);
@@ -93,13 +92,14 @@ if(cmd==='create'){
  await Promise.all(pending);
 }else if(cmd==='evaluate-all'){
  const a=await read('get_procurement',[id()]);
- const pending=[];
+ const jobs=[];
  for(let n=0;n<Number(a.bidder_count);n++){
   const seller=await read('get_seller',[id(),n]);
   const o=await read('get_offer',[id(),seller]);
-  if(o.revealed&&o.verdict==='REVEALED')pending.push(send(n+1<5?n+1:0,'evaluate_bid',[id(),seller],undefined,false));
+  if(o.revealed&&o.verdict==='REVEALED')jobs.push({who:n+1<5?n+1:0,seller});
  }
- await Promise.all(pending);
+ await Promise.all(jobs.map(x=>send(x.who,'begin_bid_review',[id(),x.seller],undefined,false)));
+ await Promise.all(jobs.map(x=>send(x.who,'evaluate_bid',[id(),x.seller],undefined,false)));
 }else if(cmd==='award'){
  await send(0,'finalize_award',[id()]);
 }else if(cmd==='deliver'){
@@ -115,6 +115,7 @@ if(cmd==='create'){
 }else if(cmd==='dispute'){
  await send(0,'dispute_delivery',[id()]);
 }else if(cmd==='review'){
+ await send(2,'begin_delivery_review',[id()]);
  await send(2,'review_delivery',[id()]);
 }else if(cmd==='accept'){
  await send(0,'accept_delivery',[id()]);
@@ -129,7 +130,7 @@ if(cmd==='create'){
 }else if(cmd==='verify-pending'){
  for(const entry of state.history.filter(x=>x.state==='submitted')){
   console.log('Checking previously submitted transaction',entry.hash);
-  const result=await clients[0].waitForFinalization({hash:entry.hash});
+  const result=await clients[0].waitForTransactionReceipt({hash:entry.hash,status:'FINALIZED'});
   entry.state=isSuccessful(result)?'finalized-success':'finalized-failed';
   entry.result=safe(result).slice(0,1500);persist();
   console.log(entry.state,entry.hash);

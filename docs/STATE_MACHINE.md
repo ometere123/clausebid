@@ -2,8 +2,10 @@
 
 ```text
 BIDDING
-  reveal complete -> evaluate_bid (per seller: REVEALED -> COMPLIANT/NONCOMPLIANT/UNCERTAIN)
-  finalized set or cutoff -> finalize_award
+  reveal complete -> begin_bid_review -> evaluate_bid
+    (per seller: REVEALED -> REVIEWING -> COMPLIANT/NONCOMPLIANT/UNCERTAIN)
+  review reservation past cutoff + grace -> cancel_bid_review -> UNCERTAIN
+  all reviews finalized, or cutoff + grace -> finalize_award
     no compliant bids => NO_AWARD (buyer budget refunded, revealed bonds returned, unrevealed bonds forfeited)
     at least one eligible => AWARDED (lowest price, earliest commitment tie)
 AWARDED
@@ -12,12 +14,15 @@ AWARDED
 AWAITING_BUYER
   buyer accepts => SETTLED
   buyer disputes in response window => REVIEW
-  buyer silent past response window => seller calls review_delivery
+  buyer silent past response window => begin_delivery_review -> REVIEWING_DELIVERY
   recovery deadline passes => UNWOUND
 REVIEW
+  begin_delivery_review -> REVIEWING_DELIVERY
+REVIEWING_DELIVERY
   consensus: PASS => SETTLED
              FAIL => CORRECTION (if attempts remain) else DEFAULTED
              UNKNOWN => UNWOUND
+  reservation past review deadline + grace => expire_delivery => UNWOUND
   recovery deadline passes => UNWOUND
 CORRECTION
   seller resubmits within 20 min => AWAITING_BUYER
