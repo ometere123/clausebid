@@ -28,6 +28,16 @@ run remains archived below for provenance and comparison.
 | Native GEN outbound messages and recipient readbacks | Parent receipts, message values and post-claim account reads | Same five replacement claim parents; child acceptance was not exposed by the pinned SDK |
 | Duplicate claim fails without a second entitlement | Finalized failed duplicate claim receipt; claims remain five | `0x82619bb2c32e601451980c893ef7d56db655bd334c8a334c9df02d5fef0f73c0` |
 
+### Consensus recheck
+
+`consensus-investigation.json` is a receipt-level recheck, not a claim that
+every validator's private model text is available. The two bid-review retry
+receipts and all nineteen defective-delivery attempts finalized as
+`MAJORITY_DISAGREE`; none created a state transition. The final delivery PASS
+receipt converged in one round with three agreeing validators. Studionet's
+pinned receipt schema did not expose a settled protocol-fee amount or a
+separate finalization timestamp, so both remain explicitly unavailable.
+
 ### Superseded funded demonstration
 
 The following rows preserve the original five-wallet run on the superseded

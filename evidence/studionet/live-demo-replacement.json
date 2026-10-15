@@ -105,6 +105,13 @@
       {"beneficiary":"0x2a9f27986ce895f5d5912a2833526c9b39009bbc","amountWei":"1750000000000000000","transaction":"0x57ce0a8e5909db28a297d5703643ad08fde7ceaa63249e546c1879f2fbb955f0"},
       {"beneficiary":"0xc43b93e999531b4ac0737e4e7f4ebb087422b067","amountWei":"1750000000000000000","transaction":"0x6e2adbca16bf6c744cee0a6cdaca66a3354d7f5e37c0742e11e7f6a228efb671"}
     ],
+    "claimReceiptSummaries": [
+      {"transaction":"0x8f39bbda90edd9e4474dfcc4ef20b8c8bfb7f56da773bb118443e17a960204a8","chainId":61999,"contract":"0x24f95ED58fcfa4e339C504fF388A922347757515","status":7,"result":6,"leaderExecution":"SUCCESS","messageType":"0","recipient":"0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7","valueWei":"10000000000000000000","onAcceptance":false},
+      {"transaction":"0x27576f99a89d46d1a3314d303a2f46c7f2ffa1e650498839b54257dbc23695e8","chainId":61999,"contract":"0x24f95ED58fcfa4e339C504fF388A922347757515","status":7,"result":6,"leaderExecution":"SUCCESS","messageType":"0","recipient":"0x4ca776be78b091374c608ae16f023ca70164ecbe","valueWei":"1750000000000000000","onAcceptance":false},
+      {"transaction":"0x0f85aa2abf6d74a7349547ca20276ff42886c3e4544aba0ab81d1a085f078b21","chainId":61999,"contract":"0x24f95ED58fcfa4e339C504fF388A922347757515","status":7,"result":6,"leaderExecution":"SUCCESS","messageType":"0","recipient":"0x275c7029516e6b1b7f56fbf970c816bfc6e793d5","valueWei":"26750000000000000000","onAcceptance":false},
+      {"transaction":"0x57ce0a8e5909db28a297d5703643ad08fde7ceaa63249e546c1879f2fbb955f0","chainId":61999,"contract":"0x24f95ED58fcfa4e339C504fF388A922347757515","status":7,"result":6,"leaderExecution":"SUCCESS","messageType":"0","recipient":"0x2a9f27986ce895f5d5912a2833526c9b39009bbc","valueWei":"1750000000000000000","onAcceptance":false},
+      {"transaction":"0x6e2adbca16bf6c744cee0a6cdaca66a3354d7f5e37c0742e11e7f6a228efb671","chainId":61999,"contract":"0x24f95ED58fcfa4e339C504fF388A922347757515","status":7,"result":6,"leaderExecution":"SUCCESS","messageType":"0","recipient":"0xc43b93e999531b4ac0737e4e7f4ebb087422b067","valueWei":"1750000000000000000","onAcceptance":false}
+    ],
     "duplicateClaimRejected": "0x82619bb2c32e601451980c893ef7d56db655bd334c8a334c9df02d5fef0f73c0"
   },
   "settlement": {
@@ -117,6 +124,13 @@
       "sellerB": "52000000000000000002",
       "sellerC": "2000000000000000002",
       "sellerD": "2000000000000000002"
+    },
+    "recipientBalancesAfterWeiByBeneficiary": {
+      "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "10000000000000000000",
+      "0x4ca776be78b091374c608ae16f023ca70164ecbe": "2000000000000000002",
+      "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "52000000000000000002",
+      "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "2000000000000000002",
+      "0xc43b93e999531b4ac0737e4e7f4ebb087422b067": "2000000000000000002"
     },
     "childAcceptance": "Not exposed by the pinned Studionet RPC/SDK; claim records remain DISPATCHED_PENDING_EXTERNAL_SETTLEMENT.",
     "ambiguousTransferRetried": false

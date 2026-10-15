@@ -107,13 +107,14 @@ export function subscribeWallet(onAccounts:(accounts:string[])=>void,onChain:(ch
   return()=>{p.removeListener?.('accountsChanged',accounts);p.removeListener?.('chainChanged',chain);p.removeListener?.('disconnect',disconnect)};
 }
 
-export function parseReceipt(detail?:string):{status:string;execution:string;messages:unknown[];result?:unknown}|null{
+export type ParsedReceipt={hash?:string;from?:string;to?:string;status:string;execution:string;messages:unknown[];result?:unknown};
+export function parseReceipt(detail?:string):ParsedReceipt|null{
   if(!detail)return null;
   try{
     const value=JSON.parse(detail) as any;
     const leader=Array.isArray(value?.consensus_data?.leader_receipt)
       ? value.consensus_data.leader_receipt.find((x:any)=>x?.mode==='leader')
       : undefined;
-    return {status:String(value?.statusName??value?.status??'UNKNOWN'),execution:String(value?.txExecutionResultName??leader?.execution_result??value?.executionStatus??'UNKNOWN'),messages:Array.isArray(value?.messages)?value.messages:[],result:value?.result};
+    return {hash:value?.hash,from:value?.from_address,to:value?.to_address,status:String(value?.statusName??value?.status??'UNKNOWN'),execution:String(value?.txExecutionResultName??leader?.execution_result??value?.executionStatus??'UNKNOWN'),messages:Array.isArray(value?.messages)?value.messages:[],result:value?.result};
   }catch{return null;}
 }

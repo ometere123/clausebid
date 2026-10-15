@@ -3,7 +3,7 @@ import {ArrowRight,ArrowUpRight,BookOpen,Check,ChevronRight,ClipboardCheck,Clock
 import {CHAIN_ID,CONTRACT,connectWallet,parseReceipt,read,refreshTx,subscribeWallet,tracked,write,type Tracked} from './lib/chain';
 import {toWei,fromWei,remaining,short,safeJson} from './lib/format';
 import {digestBid,downloadReveal,freshSalt,loadReveal,saveReveal,type RevealPackage} from './lib/commit';
-import {VERIFIED_CLAIMS} from './lib/verifiedEvidence';
+import {claimIdentity,matchArchivedClaim} from './lib/verifiedEvidence';
 
 type Auction={buyer:string;title:string;reference:string;r1:string;r2:string;r3:string;r4:string;budget:unknown;bond:unknown;commit_end:unknown;reveal_end:unknown;review_end:unknown;delivery_due:unknown;response_due:unknown;delivery_review_end:unknown;bidder_count:unknown;delivery_attempts:unknown;winner:string;winning_price:unknown;deliverable:string;status:string};
 type Offer={seller:string;commitment:string;price:unknown;terms:string;bond:unknown;position:unknown;revealed:boolean;verdict:string;evidence:string};
@@ -16,7 +16,10 @@ const gen=(n:unknown)=>fromWei(n);
 const nowSeconds=()=>Math.floor(Date.now()/1000);
 const before=(deadline:unknown)=>Number(deadline)>nowSeconds();
 const afterGrace=(deadline:unknown,grace=1800)=>Number(deadline)+grace<=nowSeconds();
-const E2E_FIXTURE=import.meta.env.VITE_E2E_FIXTURE==='true';
+// The synthetic provider/state harness is intentionally impossible to activate
+// in a production Vite build, even if an operator accidentally leaves the env
+// flag set in the deployment environment.
+const E2E_FIXTURE=import.meta.env.DEV&&import.meta.env.VITE_E2E_FIXTURE==='true';
 const E2E_WALLET='0x1111111111111111111111111111111111111111';
 const fixtureAuction=(delivery:boolean):Auction=>({buyer:'0x2222222222222222222222222222222222222222',title:'Browser recovery fixture',reference:'Approved public facts',r1:'Requirement one',r2:'Requirement two',r3:'Requirement three',r4:'Requirement four',budget:'20000000000000000000',bond:'1000000000000000000',commit_end:String(nowSeconds()+600),reveal_end:String(nowSeconds()+1200),review_end:String(nowSeconds()+1800),delivery_due:String(nowSeconds()+1800),response_due:String(nowSeconds()-1),delivery_review_end:String(nowSeconds()+1800),bidder_count:'1',delivery_attempts:'1',winner:E2E_WALLET,winning_price:'4000000000000000000',deliverable:'Fixture delivery',status:delivery?'REVIEWING_DELIVERY':'BIDDING'});
 function Status({value}:{value:string}){const positive=['SETTLED','COMPLIANT','PASS','AWARDED'];const negative=['DEFAULTED','NONCOMPLIANT','NO_AWARD','UNREVEALED'];return <span className={'status '+(positive.includes(value)?'ok':negative.includes(value)?'bad':'neutral')}>{value.replaceAll('_',' ')}</span>}
@@ -25,6 +28,11 @@ function Heading({eyebrow,title,description}:{eyebrow:string;title:string;descri
 function Field({label,children,hint}:{label:string;children:ReactNode;hint?:string}){return <label className="field"><span>{label}</span>{children}{hint&&<small>{hint}</small>}</label>}
 function Empty({text}:{text:string}){return <div className="empty"><BookOpen size={24}/><p>{text}</p></div>}
 const btnClass='btn btn-primary';
+async function mapBatched<T,R>(items:T[],worker:(item:T)=>Promise<R>,width:number):Promise<R[]>{
+ const result:R[]=[];
+ for(let i=0;i<items.length;i+=width)result.push(...await Promise.all(items.slice(i,i+width).map(worker)));
+ return result;
+}
 export default function App(){
  const [page,setPage]=useState<Page>(initialPage),[wallet,setWallet]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState(''),[mobile,setMobile]=useState(false);
  const [auctions,setAuctions]=useState<{id:number;data:Auction}[]>([]),[activity,setActivity]=useState<ActivityRow[]>([]),[selected,setSelected]=useState(1),[auction,setAuction]=useState<Auction|null>(null),[offers,setOffers]=useState<Offer[]>([]),[loading,setLoading]=useState(false);
@@ -40,8 +48,8 @@ export default function App(){
  setLoading(true);try{
   if(E2E_FIXTURE){const data=fixtureAuction(page==='delivery');const fixtureOffer:Offer={seller:E2E_WALLET,commitment:'e'.repeat(64),price:'4000000000000000000',terms:'All four requirements are addressed.',bond:'1000000000000000000',position:'0',revealed:true,verdict:page==='delivery'?'COMPLIANT':'REVIEWING',evidence:'{"statuses":["PASS","PASS","PASS","PASS"]}'};const fixtureClaims:Claim[]=[{beneficiary:E2E_WALLET,amount:'1000000000000000000',status:'DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'}];const row={id:1,data,offers:[fixtureOffer]};setAuctions([{id:1,data}]);setActivity([row]);setAuction(data);setOffers(row.offers);setEconomy({outstanding_wei:'0',dispatched_wei:'1000000000000000000',claims:1,contract_balance_wei:'0'});setClaims(fixtureClaims);setClaimable('1000000000000000000');setLoading(false);return}
   const count=Number(await read('get_count'));const ids=Array.from({length:count},(_,i)=>count-i);
-  const rows=await Promise.all(ids.map(async id=>({id,data:await read('get_procurement',[id]) as Auction})));
-  const rowsWithOffers=await Promise.all(rows.map(async row=>({ ...row, offers:wallet?await loadOffers(row.id,row.data):[]})));
+  const rows=await mapBatched(ids,async id=>({id,data:await read('get_procurement',[id]) as Auction}),4);
+  const rowsWithOffers=await mapBatched(rows,async row=>({ ...row, offers:wallet?await loadOffers(row.id,row.data):[]}),2);
   setAuctions(rows);setActivity(rowsWithOffers);
   const current=rowsWithOffers.find(x=>x.id===selected);setAuction(current?.data??null);setOffers(current?.offers??[]);
   const nextEconomy=await read('get_economy');setEconomy(nextEconomy);
@@ -95,13 +103,19 @@ export default function App(){
 }
 function Kv({k,v}:{k:string;v:string}){return <div className="kv"><span>{k}</span><b>{v}</b></div>}
 function AuctionCards({rows,select}:{rows:{id:number;data:Auction}[];select:(id:number)=>void}){return rows.length?<div className="cards">{rows.map(x=><button className="auction-card" key={x.id} onClick={()=>select(x.id)}><div className="card-top"><span className="eyebrow">PROCUREMENT #{x.id}</span><Status value={x.data.status}/></div><h3>{x.data.title}</h3><p>{x.data.r1}</p><div className="card-bottom"><div><b>{gen(x.data.budget)} GEN</b><small>Funded budget</small></div><div><b>{String(x.data.bidder_count)} bids</b><small>{remaining(x.data.reveal_end)} to reveal</small></div><ArrowUpRight size={20}/></div></button>)}</div>:<Empty text="No finalized on-chain procurements available yet. Connect the deployed contract and publish the first one."/>}
-function ClaimsLedger({claims,transactions}:{claims:Claim[];transactions:Tracked[]}){
+function ClaimsLedger({claims,transactions,contract=CONTRACT}:{claims:Claim[];transactions:Tracked[];contract?:string}){
  if(!claims.length)return <Empty text="No immutable claim records have been created by this contract."/>;
  return <div className="claim-list">{claims.map((claim,index)=>{
-  const archived=VERIFIED_CLAIMS[String(index)];
-  const related=transactions.find(t=>t.action==='claim'&&t.hash.toLowerCase()===(archived?.hash||'').toLowerCase());
+  const runtimeDeployment={chainId:CHAIN_ID,contract,auctionId:0};
+  const archived=contract?matchArchivedClaim(claim,runtimeDeployment):null;
+  const related=archived&&transactions.find(t=>{
+    if(t.action!=='claim'||t.hash.toLowerCase()!==archived.parentTransaction.toLowerCase())return false;
+    const r=parseReceipt(t.detail);
+    return Boolean(r&&r.to&&r.from&&r.to.toLowerCase()===contract.toLowerCase()&&r.from.toLowerCase()===claim.beneficiary.toLowerCase());
+  });
   const receipt=parseReceipt(related?.detail);
-  const message=(receipt?.messages||[]).find((value:any)=>String(value?.to||value?.recipient||'').toLowerCase()===String(claim.beneficiary).toLowerCase()&&String(value?.value??'')===String(claim.amount));
-  return <details className="claim-row" key={index} open={Boolean(related)}><summary><span>Claim #{index}</span><b>{gen(claim.amount)} GEN</b><Status value={claim.status}/></summary><div className="claim-detail"><Kv k="Immutable beneficiary" v={claim.beneficiary}/><Kv k="Immutable amount" v={gen(claim.amount)+' GEN'}/><Kv k="Contract record" v={claim.status==='DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'?'Outbound dispatched; external settlement pending':'Recorded'}/>{related?<><Kv k="Parent transaction" v={related.hash}/><Kv k="Parent finality" v={receipt?.status||related.phase}/><Kv k="Parent execution" v={receipt?.execution||'Unknown'}/>{message?<pre className="raw">{safeJson(message)}</pre>:<p className="fineprint">No matching outbound message was exposed in this locally stored receipt.</p>}</>:<p className="fineprint">This browser has no local parent transaction for this claim. Do not infer a transaction hash from the claim index.</p>}{archived&&<><Kv k="Archived verified parent tx" v={archived.hash}/><Kv k="Archived recipient readback" v={fromWei(archived.recipientBalanceAfterWei)+' GEN after settlement'}/><p className="fineprint">The readback above is from the separately archived five-wallet Studionet evidence, not a live balance query. The contract record remains pending because the pinned SDK exposes no child acceptance receipt.</p></>}</div></details>})}</div>;
+  const message=(receipt?.messages||[]).find((value:any)=>String(value?.to||value?.recipient||'').toLowerCase()===String(claim.beneficiary).toLowerCase()&&String(value?.value??value?.valueWei??'')===String(claim.amount));
+  const archivedMessage=archived?.parentReceipt?{messageType:archived.parentReceipt.messageType,recipient:archived.parentReceipt.recipient,valueWei:archived.parentReceipt.valueWei,onAcceptance:archived.parentReceipt.onAcceptance}:null;
+  return <details className="claim-row" key={claimIdentity(claim)} open={Boolean(related)}><summary><span>Claim #{index+1}</span><b>{gen(claim.amount)} GEN</b><Status value={claim.status}/></summary><div className="claim-detail"><Kv k="Immutable claim identity" v={claimIdentity(claim)}/><Kv k="Immutable beneficiary" v={claim.beneficiary}/><Kv k="Immutable amount" v={gen(claim.amount)+' GEN'}/><Kv k="Contract record" v={claim.status==='DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'?'Outbound dispatched; external settlement pending':'Recorded'}/>{archived?.parentReceipt?<><Kv k="Verified deployment" v={archived.deployment.contract}/><Kv k="Verified parent transaction" v={archived.parentTransaction}/><Kv k="Parent finality" v={archived.parentReceipt.status===7?'FINALIZED':'Unavailable'}/><Kv k="Parent execution" v={archived.parentReceipt.result===6&&archived.parentReceipt.leaderExecution==='SUCCESS'?'SUCCESS':'Unavailable'}/><pre className="raw">{safeJson(archivedMessage)}</pre></>:<p className="fineprint">Current-deployment receipt evidence is unavailable for this claim. No transaction hash is inferred from the claim position.</p>}{related&&receipt?<><Kv k="This browser receipt" v={receipt.status+' / '+receipt.execution}/>{message?<pre className="raw">{safeJson(message)}</pre>:<p className="fineprint">The local receipt did not expose a matching outbound message; message verification remains unavailable.</p>}</>:<p className="fineprint">This browser has no independently matched parent receipt for the immutable claim. Do not resubmit or infer one from the claim position.</p>}{archived?.recipientBalanceAfterWei?<><Kv k="Recipient balance readback" v={fromWei(archived.recipientBalanceAfterWei)+' GEN after claim'}/><p className="fineprint">This is a post-claim readback from the replacement-deployment archive, not proof of child-message acceptance. External settlement remains {archived.externalSettlement}.</p></>:<p className="fineprint">Recipient-balance evidence unavailable for this deployment and beneficiary.</p>}</div></details>})}</div>;
 }
 function Transactions({rows,onRefresh}:{rows:Tracked[];onRefresh:(hash:string)=>void}){return rows.length?<div className="tx-list">{rows.map(t=>{const receipt=parseReceipt(t.detail);return <div className="tx-row" key={t.hash}><span className="tx-icon"><GitBranch size={19}/></span><div><b>{t.action.replaceAll('_',' ')}</b><p className="mono">{t.hash}</p><small>{new Date(t.timestamp).toLocaleString()} · {t.phase}{receipt?` · ${receipt.status} / ${receipt.execution}`:''}</small></div><button className="btn btn-small" onClick={()=>onRefresh(t.hash)}>Verify <RefreshCw size={13}/></button></div>})}</div>:<Empty text="No locally tracked GenLayer transactions yet."/>}

@@ -82,7 +82,7 @@ test('recovers persisted transactions and exposes the claim audit ledger',async(
   await page.addInitScript(()=>localStorage.setItem('clausebid:pending',JSON.stringify([{hash:'0x'+'b'.repeat(64),action:'claim',phase:'submitted',timestamp:Date.now()}])));
   await page.goto('/#/audit');
   await expect(page.getByRole('heading',{name:'Individual claim ledger'})).toBeVisible();
-  await expect(page.getByText('Claim #0')).toBeVisible();
+  await expect(page.getByText('Claim #1')).toBeVisible();
   await expect(page.getByText('DISPATCHED PENDING EXTERNAL SETTLEMENT')).toBeVisible();
   await expect(page.getByText('Wallet transaction history')).toBeVisible();
   await expect(page.getByText('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')).toBeVisible();
