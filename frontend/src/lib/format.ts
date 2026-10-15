@@ -17,4 +17,4 @@ export function remaining(unix:unknown):string {
   return min>=60?Math.floor(min/60)+'h '+(min%60)+'m':min+'m';
 }
 export const short=(wallet:string)=>wallet?wallet.slice(0,6)+'…'+wallet.slice(-4):'';
-export const safeJson=(value:unknown)=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v,null,2);
+export const safeJson=(value:unknown)=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v,2);
