@@ -43,19 +43,21 @@ function commitment(auction,seller,price,terms,salt){
 }
 async function read(method,args=[]){return clients[0].readContract({address:ADDRESS,functionName:method,args})}
 function safe(v){return JSON.stringify(v,(_,x)=>typeof x==='bigint'?x.toString():x)}
-async function send(who,method,args=[],value){
+async function send(who,method,args=[],value,wait=true){
  const client=clients[who];
  const call={address:ADDRESS,functionName:method,args,...(value===undefined?{}:{value})};
  const estimate=await client.estimateTransactionFeesForWrite(call);
  console.log('Initiating:',KEYS[who],method,'deposit_wei='+String(value??0n));
  const hash=await client.writeContract({...call,fees:{distribution:estimate.distribution,feeValue:estimate.feeValue}});
- state.history.push({wallet:KEYS[who],method,hash,submittedAt:new Date().toISOString(),state:'submitted'});
+ const entry={wallet:KEYS[who],method,hash,submittedAt:new Date().toISOString(),state:'submitted'};
+ state.history.push(entry);
  persist();
+ if(!wait){console.log('Queued without blocking subsequent participants:',hash);return hash;}
  console.log('GenLayer tx ID:',hash,'waiting for FINALIZED + execution success');
  const receipt=await client.waitForFinalization({hash});
  const ok=isSuccessful(receipt);
- state.history.at(-1).state=ok?'finalized-success':'finalized-failed';
- state.history.at(-1).result=safe(receipt).slice(0,1500);
+ entry.state=ok?'finalized-success':'finalized-failed';
+ entry.result=safe(receipt).slice(0,1500);
  persist();
  if(!ok)throw Error('Finalized but failed. Inspect hash and state BEFORE retry: '+hash);
  console.log('Finalized execution success:',hash);
@@ -70,27 +72,33 @@ if(cmd==='create'){
 }else if(cmd==='commit-all'){
  const a=await read('get_procurement',[id()]);
  const bond=BigInt(a.bond);
+ const pending=[];
  for(let n=0;n<4;n++){
   const seller=wallets[n+1].address.toLowerCase();const salt=randomBytes(32).toString('hex');
   const price=bids[n].price*U;
   const digest=commitment(id(),seller,price,bids[n].terms,salt);
   state.reveal[seller]={auctionId:id(),seller,price:String(price),terms:bids[n].terms,salt,digest};persist();
-  await send(n+1,'commit_bid',[id(),digest],bond);
+  pending.push(send(n+1,'commit_bid',[id(),digest],bond,false));
  }
+ await Promise.all(pending);
  console.log('All four commitments submitted. KEEP evidence/session.local.json SECRET until reveal.');
 }else if(cmd==='reveal-all'){
+ const pending=[];
  for(let n=0;n<4;n++){
   const o=state.reveal[wallets[n+1].address.toLowerCase()];
   if(!o)throw Error('Missing original saved commitment for seller '+(n+1));
-  await send(n+1,'reveal_bid',[id(),BigInt(o.price),o.terms,o.salt]);
+  pending.push(send(n+1,'reveal_bid',[id(),BigInt(o.price),o.terms,o.salt],undefined,false));
  }
+ await Promise.all(pending);
 }else if(cmd==='evaluate-all'){
  const a=await read('get_procurement',[id()]);
+ const pending=[];
  for(let n=0;n<Number(a.bidder_count);n++){
   const seller=await read('get_seller',[id(),n]);
   const o=await read('get_offer',[id(),seller]);
-  if(o.revealed&&o.verdict==='REVEALED')await send(n+1<5?n+1:0,'evaluate_bid',[id(),seller]);
+  if(o.revealed&&o.verdict==='REVEALED')pending.push(send(n+1<5?n+1:0,'evaluate_bid',[id(),seller],undefined,false));
  }
+ await Promise.all(pending);
 }else if(cmd==='award'){
  await send(0,'finalize_award',[id()]);
 }else if(cmd==='deliver'){
@@ -117,6 +125,14 @@ if(cmd==='create'){
   if(due>0n){console.log(KEYS[n], 'claiming',String(due),'wei');await send(n,'claim')}
  }
  console.log('Claim writes are not payout evidence: verify recipient GEN balance and finalized external-message receipts.');
+}else if(cmd==='verify-pending'){
+ for(const entry of state.history.filter(x=>x.state==='submitted')){
+  console.log('Checking previously submitted transaction',entry.hash);
+  const result=await clients[0].waitForFinalization({hash:entry.hash});
+  entry.state=isSuccessful(result)?'finalized-success':'finalized-failed';
+  entry.result=safe(result).slice(0,1500);persist();
+  console.log(entry.state,entry.hash);
+ }
 }else if(cmd==='inspect'){
  console.log('Auction',id(),safe(await read('get_procurement',[id()])));
  const a=await read('get_procurement',[id()]);
@@ -127,6 +143,6 @@ if(cmd==='create'){
  console.log('Economy',safe(await read('get_economy')));
  console.log('Recorded writes',state.history.length);
 }else{
- console.log('Commands: create, commit-all, reveal-all, evaluate-all, award, deliver, dispute, review, accept, expire, claim-all, inspect');
+ console.log('Commands: create, commit-all, reveal-all, evaluate-all, verify-pending, award, deliver, dispute, review, accept, expire, claim-all, inspect');
  console.log('Use real wall-clock windows, NEVER warp hosted Studionet. No command changes network time.');
 }
