@@ -57,7 +57,7 @@ export default function App(){
  if(page==='auction'||page==='delivery'||page==='audit'){setAuction(null);setOffers([])}
  setLoading(true);try{
   if(E2E_FIXTURE){const data=fixtureAuction(page==='delivery');const fixtureOffer:Offer={seller:E2E_WALLET,commitment:'e'.repeat(64),price:'4000000000000000000',terms:'All four requirements are addressed.',bond:'1000000000000000000',position:'0',revealed:true,verdict:page==='delivery'?'COMPLIANT':'REVIEWING',evidence:'{"statuses":["PASS","PASS","PASS","PASS"]}'};const fixtureClaims:Claim[]=[{beneficiary:E2E_WALLET,amount:'1000000000000000000',status:'DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'}];const row={id:1,data,offers:[fixtureOffer]};setAuctions([{id:1,data}]);setActivity([row]);setAuction(data);setOffers(row.offers);setEconomy({outstanding_wei:'0',dispatched_wei:'1000000000000000000',claims:1,contract_balance_wei:'0'});setClaims(fixtureClaims);setClaimable('1000000000000000000');setLoading(false);return}
-  const count=Number(await read('get_count'));const ids=Array.from({length:count},(_,i)=>count-i);
+  const count=Number(await read('get_count'));const ids=(page==='auction'||page==='delivery'||page==='audit')?[selected]:Array.from({length:count},(_,i)=>count-i);
   const rows=await mapBatched(ids,async id=>({id,data:await read('get_procurement',[id]) as Auction}),4);
   if(sequence!==refreshSequence.current)return;
   const current=rows.find(x=>x.id===selected);
