@@ -9,6 +9,7 @@
     "dev": "npm --prefix frontend run dev"
   },
   "dependencies": {
-    "genlayer": "0.39.1"
+    "genlayer": "0.39.1",
+    "genlayer-js": "1.1.8"
   }
 }
