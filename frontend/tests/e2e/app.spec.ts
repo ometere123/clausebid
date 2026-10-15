@@ -53,7 +53,10 @@ test('handles wallet connection rejection, signing rejection, account changes an
   await expect(page.getByRole('alert')).toContainText('rejected');
   await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=false});
   await page.getByRole('button',{name:'Connect wallet'}).click();
-  await expect(page.getByRole('button',{name:'0x1111…1111'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Disconnect wallet'})).toBeVisible();
+  await page.getByRole('button',{name:'Disconnect wallet'}).click();
+  await expect(page.getByRole('button',{name:'Connect wallet'})).toBeVisible();
+  await page.getByRole('button',{name:'Connect wallet'}).click();
   await page.evaluate(()=>{(window as any).ethereum.state.rejectSign=true});
   await page.goto('/#/auction/1');
   await expect(page.getByRole('heading',{name:'Auction #1'})).toBeVisible();
@@ -83,7 +86,7 @@ test('recovers persisted transactions and exposes the claim audit ledger',async(
   await page.goto('/#/audit');
   await expect(page.getByRole('heading',{name:'Individual claim ledger'})).toBeVisible();
   await expect(page.getByText('Claim #1')).toBeVisible();
-  await expect(page.getByText('DISPATCHED PENDING EXTERNAL SETTLEMENT')).toBeVisible();
+  await expect(page.getByText('Dispatched Pending External Settlement')).toBeVisible();
   await expect(page.getByText('Wallet transaction history')).toBeVisible();
   await expect(page.getByText('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')).toBeVisible();
 });
