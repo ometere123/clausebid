@@ -3,14 +3,20 @@ import {studionet} from 'genlayer-js/chains';
 import {safeJson} from './format';
 export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim().toLowerCase();
 export const CHAIN_ID=61999;
-const HEX_CHAIN='0xf22f'; // 61999 hex — checked dynamically below to avoid hardcoding errors
 type Provider={request:(x:{method:string;params?:unknown[]})=>Promise<unknown>};
 declare global { interface Window {ethereum?:Provider;} }
 type Write={functionName:string;args?:unknown[];value?:bigint};
 const asAddr=()=>{if(!/^0x[0-9a-f]{40}$/.test(CONTRACT))throw new Error('VITE_CLAUSEBID_ADDRESS must be a deployed 0x address');return CONTRACT as `0x${string}`;};
 const reader:any=createClient({chain:studionet});
+export function decodeContractValue(raw:any):any {
+  if(raw instanceof Map)return Object.fromEntries(Array.from(raw.entries(),([k,v])=>[String(k),decodeContractValue(v)]));
+  if(Array.isArray(raw))return raw.map(decodeContractValue);
+  if(raw && typeof raw==='object' && !(raw instanceof Uint8Array) && !(raw instanceof Date))
+    return Object.fromEntries(Object.entries(raw).map(([k,v])=>[k,decodeContractValue(v)]));
+  return raw;
+}
 export async function read(functionName:string,args:unknown[]=[]):Promise<any>{
-  return await reader.readContract({address:asAddr(),functionName,args});
+  return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));
 }
 export async function connectWallet():Promise<string>{
   const p=window.ethereum;
