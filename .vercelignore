@@ -1,0 +1,9 @@
+node_modules
+frontend/node_modules
+.uv-venv
+.venv
+.git
+evidence/session.local.json
+evidence/*.local.json
+*.pyc
+__pycache__

@@ -35,7 +35,7 @@ npm run test --prefix frontend
 
 Copy `frontend/.env.example` to `frontend/.env`, then populate **an actual verified contract address** after deployment. Run `npm run dev --prefix frontend`.
 
-Only connect an injected EIP-1193 wallet to Studionet. Private keys used by CLI scripts stay in ignored `.env` files. Contract writes require separate protocol fees; escrow value must not be treated as payment for protocol fees.
+Only connect an injected EIP-1193 wallet to Studionet. Private keys used by CLI scripts stay in ignored `.env` files. The driver also supports the repository-local encrypted CLI keystores through `CLAUSEBID_KEYSTORE_PASSWORD`; it never writes private keys to the repository. Contract writes require separate protocol fees; escrow value must not be treated as payment for protocol fees.
 
 ## Live evidence
 
@@ -49,7 +49,9 @@ node scripts/preflight.mjs
 node --env-file=.env scripts/drive.mjs inspect
 ```
 
-The driver queues independent wallet submissions during the short commitment window, records every transaction ID in the ignored `evidence/session.local.json`, and requires `FINALIZED` plus `FINISHED_WITH_RETURN` before treating a write as successful. `claim` finality is still not payout evidence: inspect the immutable claim record, outbound message/child receipt, and recipient balance delta.
+The driver queues independent wallet submissions during the short commitment window, records every transaction ID in the ignored `evidence/session.local.json`, and requires `FINALIZED` plus a successful leader execution/return in the pinned SDK receipt before treating a write as successful. On Studionet, `genlayer-js@1.1.8` exposes the execution result through the consensus leader receipt rather than always populating `txExecutionResultName`. `claim` finality is still not payout evidence: inspect the immutable claim record, outbound message/child receipt, and recipient balance delta.
+
+For local encrypted CLI accounts, set `CLAUSEBID_KEYSTORE_PASSWORD` only in the calling shell and use the default account names (`praest-deployer`, `clausebid-seller-a` through `clausebid-seller-d`). Do not place that password or keystore contents in Git. The five-wallet driver uses real elapsed Studionet time; it does not warp the hosted chain.
 
 Do not accept a finality flag without execution success. Do not turn timed-out review transactions into automatic approvals. Direct Mode mocks are not external validator evidence. A failed outbound value message does not automatically restore money. There is no privileged administrator rescue path.
 

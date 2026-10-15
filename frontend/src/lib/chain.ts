@@ -1,17 +1,21 @@
 import {createClient} from 'genlayer-js';
 export function isSuccessful(receipt:any):boolean {
-  const status=String(receipt?.statusName??receipt?.status??'').toUpperCase();
-  const result=String(receipt?.txExecutionResultName??receipt?.executionStatus??'').toUpperCase();
-  return status==='FINALIZED' && result==='FINISHED_WITH_RETURN';
+  const finalized=String(receipt?.statusName??'').toUpperCase()==='FINALIZED' || Number(receipt?.status)===7;
+  const leader=Array.isArray(receipt?.consensus_data?.leader_receipt)
+    ? receipt.consensus_data.leader_receipt.find((x:any)=>x?.mode==='leader')
+    : undefined;
+  const execution=String(receipt?.txExecutionResultName??receipt?.executionStatus??'').toUpperCase()==='FINISHED_WITH_RETURN'
+    || (Number(receipt?.result)===6 && String(leader?.execution_result??'').toUpperCase()==='SUCCESS');
+  return finalized && execution;
 }
 import {studionet} from 'genlayer-js/chains';
 import {safeJson} from './format';
-export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim().toLowerCase();
+export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim();
 export const CHAIN_ID=61999;
 type Provider={request:(x:{method:string;params?:unknown[]})=>Promise<unknown>};
 declare global { interface Window {ethereum?:Provider;} }
 type Write={functionName:string;args?:unknown[];value?:bigint};
-const asAddr=()=>{if(!/^0x[0-9a-f]{40}$/.test(CONTRACT))throw new Error('VITE_CLAUSEBID_ADDRESS must be a deployed 0x address');return CONTRACT as `0x${string}`;};
+const asAddr=()=>{if(!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT))throw new Error('VITE_CLAUSEBID_ADDRESS must be a deployed 0x address');return CONTRACT as `0x${string}`;};
 const reader:any=createClient({chain:studionet});
 export function decodeContractValue(raw:any):any {
   if(raw instanceof Map)return Object.fromEntries(Array.from(raw.entries(),([k,v])=>[String(k),decodeContractValue(v)]));
@@ -69,7 +73,7 @@ export async function write(account:string,w:Write,onChange?:(s:string)=>void):P
   track({hash,action:w.functionName,phase:'submitted',timestamp:Date.now()});
   onChange?.('Submitted '+hash+'. Waiting for actual GenLayer finalization');
   try{
-    const receipt=await client.waitForTransactionReceipt({hash,status:'FINALIZED'});
+    const receipt=await client.waitForTransactionReceipt({hash,status:'FINALIZED',interval:3000,retries:120});
     const success=isSuccessful(receipt);
     track({hash,action:w.functionName,phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(receipt).slice(0,2000)});
     if(!success)throw new Error('Finalized transaction did not execute successfully: '+hash);
@@ -80,7 +84,7 @@ export async function write(account:string,w:Write,onChange?:(s:string)=>void):P
   return hash;
 }
 export async function refreshTx(hash:string):Promise<void>{
-  const result:any=await reader.waitForTransactionReceipt({hash,status:'FINALIZED'});
+  const result:any=await reader.waitForTransactionReceipt({hash,status:'FINALIZED',interval:3000,retries:120});
   const success=isSuccessful(result);
   const old=tracked().find(t=>t.hash===hash);
   track({hash,action:old?.action||'unknown',phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(result).slice(0,2000)});

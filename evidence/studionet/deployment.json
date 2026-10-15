@@ -1,0 +1,16 @@
+{
+  "network": "studionet",
+  "chainId": 61999,
+  "rpc": "https://studio.genlayer.com/api",
+  "contractAddress": "0x9c70a987A6875F0B0128AEf16C57F4998F778827",
+  "sourceCommit": "e3b554b8cbbcc2660b3a520f89afb07382565be0",
+  "sourceSha256": "6626d52672ae45fd050dac7a7f675aa50db585843811a6267cf3f87dc4822058",
+  "deploymentTransaction": "0xf87c4ef9a0769788cb7d470745fed3e09054ee913045245e36e8bf4cb89bd445",
+  "deploymentStatus": "FINALIZED",
+  "deploymentConsensus": "MAJORITY_AGREE",
+  "deploymentLeaderExecution": "SUCCESS",
+  "deploymentValidatorVotes": 5,
+  "sourceVerification": "evidence/studionet/source-verification.json",
+  "frontend": "https://clausebid.vercel.app",
+  "note": "The contract source commit is the last commit that changed contracts/clausebid.py. Later commits contain only deployment, frontend, driver and evidence updates unless explicitly stated."
+}
