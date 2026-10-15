@@ -3,7 +3,7 @@
   "chainId": 61999,
   "rpc": "https://studio.genlayer.com/api",
   "contractAddress": "0x24f95ED58fcfa4e339C504fF388A922347757515",
-  "sourceCommit": "TO_BE_FILLED_WITH_SOURCE_COMMIT",
+  "sourceCommit": "a7a7487407949c8702093a34b45de53940e047fe",
   "sourceSha256": "18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4",
   "deploymentTransaction": "0x3e2cfa63e81b509cda9297ebe48d60516c5370682a8c0458d94d773d2bf7e408",
   "deploymentStatus": "FINALIZED",
