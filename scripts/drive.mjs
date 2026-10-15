@@ -5,7 +5,8 @@
  * No hidden wait / no test-only contract shortcuts. All commands are real writes.
  * All private keys and reveal salts remain in environment/untracked local state.
  */
-import {createClient,createAccount,isSuccessful} from 'genlayer-js';
+import {createClient,createAccount} from 'genlayer-js';
+const isSuccessful=(r)=>String(r?.statusName??r?.status??'').toUpperCase()==='FINALIZED' && String(r?.txExecutionResultName??r?.executionStatus??'').toUpperCase()==='FINISHED_WITH_RETURN';
 import {studionet} from 'genlayer-js/chains';
 import {createHash,randomBytes} from 'node:crypto';
 import fs from 'node:fs';
