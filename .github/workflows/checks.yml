@@ -11,7 +11,13 @@ jobs:
         with: {python-version: '3.12'}
       - run: python -m pip install -r requirements.txt
       - run: python -m compileall -q contracts
+      - run: python -m pytest -q tests/test_commit_vectors.py
       - run: genvm-lint check contracts/clausebid.py
+      - name: Supply renamed GenVM runner asset to pinned Direct Mode test loader
+        run: |
+          mkdir -p "$HOME/.cache/gltest-direct"
+          ls -lh "$HOME/.cache/genvm-linter" || true
+          cp "$HOME"/.cache/genvm-linter/genvm-universal-*.tar.xz "$HOME/.cache/gltest-direct/" || echo "Runner cache path differs; Direct Mode reports the provider blocker"
       - run: pytest tests/direct -v
   frontend:
     runs-on: ubuntu-latest
