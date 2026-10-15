@@ -1,4 +1,4 @@
-import {useCallback,useEffect,useState,type FormEvent,type ReactNode} from 'react';
+import {useCallback,useEffect,useRef,useState,type FormEvent,type ReactNode} from 'react';
 import {ArrowRight,ArrowUpRight,BookOpen,Check,ChevronRight,ClipboardCheck,Clock3,FileCheck2,Gavel,GitBranch,LockKeyhole,LogOut,Menu,RefreshCw,Scale,Shield,Wallet,X} from 'lucide-react';
 import {CHAIN_ID,CONTRACT,connectWallet,parseReceipt,read,refreshTx,subscribeWallet,tracked,write,type Tracked} from './lib/chain';
 import {toWei,fromWei,remaining,short,safeJson,errorText} from './lib/format';
@@ -44,6 +44,7 @@ async function mapBatched<T,R>(items:T[],worker:(item:T)=>Promise<R>,width:numbe
 export default function App(){
  const [page,setPage]=useState<Page>(initialPage),[wallet,setWallet]=useState(''),[busy,setBusy]=useState(false),[status,setStatus]=useState(''),[error,setError]=useState(''),[mobile,setMobile]=useState(false);
  const [auctions,setAuctions]=useState<{id:number;data:Auction}[]>([]),[activity,setActivity]=useState<ActivityRow[]>([]),[selected,setSelected]=useState(1),[auction,setAuction]=useState<Auction|null>(null),[offers,setOffers]=useState<Offer[]>([]),[loading,setLoading]=useState(false);
+ const refreshSequence=useRef(0);
  const [claimable,setClaimable]=useState('0'),[economy,setEconomy]=useState<any>(null),[claims,setClaims]=useState<Claim[]>([]),[transactions,setTransactions]=useState<Tracked[]>(tracked()),[copiedWallet,setCopiedWallet]=useState(false);
  const [draft,setDraft]=useState({title:'',reference:'',r1:'',r2:'',r3:'',r4:'',budget:'10'});
  const [offerText,setOfferText]=useState(''),[offerPrice,setOfferPrice]=useState(''),[reveal,setReveal]=useState<RevealPackage|null>(null);
@@ -52,14 +53,22 @@ export default function App(){
  useEffect(()=>{const change=()=>{const p=initialPage();setPage(p);const id=Number(location.hash.split('/')[2]);if(id>0)setSelected(id)};window.addEventListener('hashchange',change);change();return()=>window.removeEventListener('hashchange',change)},[]);
  useEffect(()=>{const t=()=>setTransactions(tracked());window.addEventListener('clausebid:transactions',t);return()=>window.removeEventListener('clausebid:transactions',t)},[]);
  const loadOffers=useCallback(async(id:number,data:Auction):Promise<Offer[]>=>{const gathered:Offer[]=[];for(let i=0;i<Number(data.bidder_count);i++){const seller=await read('get_seller',[id,i]);gathered.push(await read('get_offer',[id,seller]) as Offer)}return gathered},[]);
- const refresh=useCallback(async()=>{if(!CONTRACT){setError('Contract is not configured. Deploy on Studionet and set VITE_CLAUSEBID_ADDRESS. No mock marketplace data is shown.');return}
+ const refresh=useCallback(async()=>{const sequence=++refreshSequence.current;if(!CONTRACT){setError('Contract is not configured. Deploy on Studionet and set VITE_CLAUSEBID_ADDRESS. No mock marketplace data is shown.');return}
+ if(page==='auction'||page==='delivery'||page==='audit'){setAuction(null);setOffers([])}
  setLoading(true);try{
   if(E2E_FIXTURE){const data=fixtureAuction(page==='delivery');const fixtureOffer:Offer={seller:E2E_WALLET,commitment:'e'.repeat(64),price:'4000000000000000000',terms:'All four requirements are addressed.',bond:'1000000000000000000',position:'0',revealed:true,verdict:page==='delivery'?'COMPLIANT':'REVIEWING',evidence:'{"statuses":["PASS","PASS","PASS","PASS"]}'};const fixtureClaims:Claim[]=[{beneficiary:E2E_WALLET,amount:'1000000000000000000',status:'DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'}];const row={id:1,data,offers:[fixtureOffer]};setAuctions([{id:1,data}]);setActivity([row]);setAuction(data);setOffers(row.offers);setEconomy({outstanding_wei:'0',dispatched_wei:'1000000000000000000',claims:1,contract_balance_wei:'0'});setClaims(fixtureClaims);setClaimable('1000000000000000000');setLoading(false);return}
   const count=Number(await read('get_count'));const ids=Array.from({length:count},(_,i)=>count-i);
   const rows=await mapBatched(ids,async id=>({id,data:await read('get_procurement',[id]) as Auction}),4);
-  const rowsWithOffers=await mapBatched(rows,async row=>({ ...row, offers:wallet?await loadOffers(row.id,row.data):[]}),2);
+  if(sequence!==refreshSequence.current)return;
+  const current=rows.find(x=>x.id===selected);
+  const currentOffers=wallet&&current&&(page==='auction'||page==='delivery'||page==='audit')?await loadOffers(current.id,current.data):[];
+  if(sequence!==refreshSequence.current)return;
+  const rowsWithOffers=page==='dashboard'
+    ?await mapBatched(rows,async row=>({ ...row, offers:wallet?await loadOffers(row.id,row.data):[]}),2)
+    :rows.map(row=>({...row,offers:row.id===selected?currentOffers:[]}));
+  if(sequence!==refreshSequence.current)return;
   setAuctions(rows);setActivity(rowsWithOffers);
-  const current=rowsWithOffers.find(x=>x.id===selected);setAuction(current?.data??null);setOffers(current?.offers??[]);
+  setAuction(current?.data??null);setOffers(currentOffers);
   const nextEconomy=await read('get_economy');setEconomy(nextEconomy);
   if(wallet)setClaimable(String(await read('get_credit',[wallet])));else setClaimable('0');
   const claimCount=Number(nextEconomy?.claims??0);const claimRows:Claim[]=[];for(let i=0;i<claimCount;i++)claimRows.push(await read('get_claim',[i]) as Claim);setClaims(claimRows);
