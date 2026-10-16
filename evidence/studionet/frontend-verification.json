@@ -1,12 +1,20 @@
 {
-  "verifiedAt": "2026-10-15T10:28:00Z",
-  "repositoryCommit": "38da76b",
+  "verifiedAt": "2026-10-16T23:36:35Z",
+  "repositoryCommit": "05579e60353bd92314dd8e37697119d7a1aff09e",
   "productionUrl": "https://clausebid.vercel.app",
   "vercel": {
-    "deploymentId": "dpl_pK62xUyDj1ExxPLNQJBgzpNgjyZX",
-    "deploymentUrl": "https://clausebid-r9ieklmlt-delealufejoel-4184s-projects.vercel.app",
+    "deploymentId": null,
+    "deploymentUrl": "https://clausebid.vercel.app",
     "readyState": "READY",
-    "nodeRuntime": "22.x"
+    "nodeRuntime": "22.x",
+    "verification": {
+      "method": "Automatic GitHub-connected production deployment; no separate Vercel deployment was issued",
+      "observedAt": "2026-10-16T23:36:20Z",
+      "httpStatus": 200,
+      "server": "Vercel",
+      "lastModified": "2026-10-16T23:31:57Z",
+      "deploymentIdNote": "The automatic integration did not expose a deployment ID through the available CLI session; the immutable bundle and production alias were verified directly."
+    }
   },
   "binding": {
     "chainId": 61999,
@@ -19,17 +27,27 @@
     "historicalAddressInBundle": true,
     "historicalAddressExplanation": "The superseded address is present only in the separately labelled historical evidence archive; it is not the runtime contract binding."
   },
+  "productionBundle": {
+    "asset": "/assets/index-BGu0ojhn.js",
+    "bytes": 776894,
+    "currentContractPresent": true,
+    "fixtureFlagPresent": false,
+    "walletRestoreCodePresent": true,
+    "rateLimitMessagePresent": true
+  },
   "automatedBrowserRegression": {
     "harness": "Playwright with synthetic provider and fixture state; regression only",
-    "tests": 4,
-    "passed": 4,
+    "tests": 5,
+    "passed": 5,
+    "frontendUnitTests": 9,
     "liveEvidence": false
   },
   "realInjectedWallet": {
     "status": "NOT_COMPLETED",
-    "attempt": "A genuine Chrome/Rabby EIP-1193 connection request was initiated against the local build configured with the replacement address.",
-    "blocker": "The Windows computer-use safety layer stopped before the extension approval could be inspected because it could not determine the chrome-extension URL with sufficient confidence.",
+    "browser": "Chrome profile Convert",
+    "attempt": "The Convert profile was discovered through the supported browser bridge. A controllable blank tab was created, but navigation to https://clausebid.vercel.app/#/create timed out and the tab remained about:blank; no wallet prompt or site page was exposed to the automation surface.",
+    "blocker": "The supported Chrome bridge did not expose a controllable ClauseBid tab in the Convert profile during this verification pass. No extension profile data, private key, seed phrase or browser security boundary was bypassed.",
     "writesSigned": false,
-    "doNotUpgrade": "No live wallet signing, account switch, network switch, or funded browser transaction is counted as verified by this artifact."
+    "doNotUpgrade": "No live wallet signing, account switch, network switch, or funded browser transaction is counted as verified by this artifact. User opening https://clausebid.vercel.app/#/create in the Convert profile and leaving that tab active is the minimum intervention required to retry."
   }
 }
