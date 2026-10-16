@@ -4,15 +4,15 @@ const ACCOUNT='0x1111111111111111111111111111111111111111';
 const ACCOUNT_B='0x3333333333333333333333333333333333333333';
 const CHAIN='0xf22f';
 
-async function installWallet(page:Page){
-  await page.addInitScript(({account,accountB,chain})=>{
+async function installWallet(page:Page,{authorized=true}:{authorized?:boolean}={}){
+  await page.addInitScript(({account,accountB,chain,authorized})=>{
     const listeners=new Map<string,Set<(...args:unknown[])=>void>>();
-    const state={account,accounts:[account],chain,rejectConnect:false,rejectSign:false};
+    const state={account,accounts:authorized?[account]:[],chain,rejectConnect:false,rejectSign:false};
     const emit=(event:string,...args:unknown[])=>listeners.get(event)?.forEach(fn=>fn(...args));
     (window as any).ethereum={
       request:async(request:{method:string;params?:unknown[]})=>{
         const {method,params}=request;
-        if(method==='eth_requestAccounts'){if(state.rejectConnect)throw Object.assign(new Error('User rejected wallet connection'),{code:4001});return state.accounts;}
+        if(method==='eth_requestAccounts'){if(state.rejectConnect)throw Object.assign(new Error('User rejected wallet connection'),{code:4001});if(!state.accounts.length)state.accounts=[state.account];return state.accounts;}
         if(method==='eth_accounts')return state.accounts;
         if(method==='eth_chainId')return state.chain;
         if(method==='wallet_switchEthereumChain'){state.chain=String((params as any)?.[0]?.chainId||chain);emit('chainChanged',state.chain);return null;}
@@ -30,7 +30,7 @@ async function installWallet(page:Page){
       switchChain:(next:string)=>{state.chain=next;emit('chainChanged',next)},
     };
     (window as any).__clausebidTest={accountB};
-  },{account:ACCOUNT,accountB:ACCOUNT_B,chain:CHAIN});
+  },{account:ACCOUNT,accountB:ACCOUNT_B,chain:CHAIN,authorized});
 }
 
 test.beforeEach(async({page})=>{await installWallet(page);});
@@ -47,23 +47,24 @@ test('navigates all seven screens and preserves mobile navigation',async({page})
 });
 
 test('handles wallet connection rejection, signing rejection, account changes and chain changes',async({page})=>{
+  await installWallet(page,{authorized:false});
   await page.goto('/#/dashboard');
   await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=true});
-  await page.getByRole('button',{name:'Connect wallet'}).click();
+  await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('rejected');
   await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=false});
-  await page.getByRole('button',{name:'Connect wallet'}).click();
+  await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
   await expect(page.getByRole('button',{name:/Copy wallet address/})).toBeVisible();
   await page.getByRole('button',{name:/Copy wallet address/}).click();
   await expect(page.getByRole('button',{name:/Copy wallet address/})).toContainText('Copied');
-  await expect(page.getByRole('button',{name:'Disconnect wallet'})).toBeVisible();
-  await page.getByRole('button',{name:'Disconnect wallet'}).click();
+  await expect(page.getByRole('button',{name:'Disconnect wallet',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Disconnect wallet',exact:true}).click();
   await expect(page.getByRole('button',{name:'Connect wallet'})).toBeVisible();
   await page.getByRole('button',{name:'Connect wallet'}).click();
-  await page.evaluate(()=>{(window as any).ethereum.state.rejectSign=true});
   await page.goto('/#/auction/1');
   await expect(page.getByRole('heading',{name:'Auction #1'})).toBeVisible();
   await expect(page.getByRole('button',{name:/Save reveal backup and commit/})).toBeEnabled();
+  await page.evaluate(()=>{(window as any).ethereum.state.rejectSign=true});
   await page.getByLabel('All-in price in GEN').fill('4');
   await page.getByLabel('Complete offer terms').fill('All four requirements are addressed.');
   await page.getByRole('button',{name:/Save reveal backup and commit/}).click();
@@ -72,6 +73,20 @@ test('handles wallet connection rejection, signing rejection, account changes an
   await expect(page.getByRole('alert')).toContainText('account changed');
   await page.evaluate(()=>{(window as any).ethereum.switchChain('0x1')});
   await expect(page.getByRole('alert')).toContainText('Studionet 61999');
+  await page.evaluate(()=>{(window as any).ethereum.switchChain('0xf22f')});
+  await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
+  await expect(page.getByRole('button',{name:/Copy wallet address/})).toBeVisible();
+});
+
+test('restores an already-authorized wallet after refresh and documents local disconnect policy',async({page})=>{
+  await page.goto('/#/dashboard');
+  await expect(page.getByRole('button',{name:'Disconnect wallet',exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Disconnect wallet',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Disconnect wallet',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Connect wallet',exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('button',{name:'Disconnect wallet',exact:true})).toBeVisible();
 });
 
 test('shows reserved review resume controls instead of unsafe restart/cancel',async({page})=>{

@@ -19,6 +19,14 @@ export function remaining(unix:unknown):string {
 export const short=(wallet:string)=>wallet?wallet.slice(0,6)+'…'+wallet.slice(-4):'';
 export const safeJson=(value:unknown)=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v,2);
 export const errorText=(value:unknown)=>{
+ const candidate=value as any;
+ const details=String(candidate?.details??candidate?.cause?.details??'');
+ const code=candidate?.code??candidate?.cause?.code;
+ const retry=Number(candidate?.cause?.data?.retry_after_seconds??candidate?.data?.retry_after_seconds);
+ if(code===-32029||/rate limit exceeded/i.test(details)){
+  const wait=Number.isFinite(retry)&&retry>0?` Try again in ${Math.ceil(retry)} seconds.`:' Try again shortly.';
+  return 'Studionet RPC rate limit reached.'+wait+' No transaction was submitted.';
+ }
  if(value instanceof Error)return value.message||value.name;
  if(typeof value==='string')return value;
  const encoded=safeJson(value);

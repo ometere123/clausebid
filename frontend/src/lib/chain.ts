@@ -23,6 +23,16 @@ const asAddr=()=>{if(!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT))throw new Error('VITE
 const provider=()=>{if(!window.ethereum)throw new Error('Install or enable an injected EIP-1193 wallet.');return window.ethereum as Eip1193Provider;};
 const desiredChain=()=>`0x${CHAIN_ID.toString(16)}`;
 const reader:any=createClient({chain:studionet});
+let readBackoffUntil=0;
+const wait=(milliseconds:number)=>new Promise<void>(resolve=>setTimeout(resolve,milliseconds));
+function retryAfterSeconds(value:unknown):number{
+ const candidate=value as any;
+ const direct=Number(candidate?.cause?.data?.retry_after_seconds??candidate?.data?.retry_after_seconds);
+ if(Number.isFinite(direct)&&direct>0)return direct;
+ const text=String(candidate?.details??candidate?.cause?.details??'');
+ const match=text.match(/retry_after_seconds[^0-9]*(\d+)/i);
+ return match?Number(match[1]):0;
+}
 export function decodeContractValue(raw:any):any {
   if(raw instanceof Map)return Object.fromEntries(Array.from(raw.entries(),([k,v])=>[String(k),decodeContractValue(v)]));
   if(Array.isArray(raw))return raw.map(decodeContractValue);
@@ -31,7 +41,16 @@ export function decodeContractValue(raw:any):any {
   return raw;
 }
 export async function read(functionName:string,args:unknown[]=[]):Promise<any>{
-  return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));
+  const initialWait=Math.max(0,readBackoffUntil-Date.now());
+  if(initialWait)await wait(initialWait);
+  try{return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));}
+  catch(error){
+   const retry=retryAfterSeconds(error);
+   if(!retry||retry>120)throw error;
+   readBackoffUntil=Math.max(readBackoffUntil,Date.now()+retry*1000);
+   await wait(Math.max(0,readBackoffUntil-Date.now()));
+   return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));
+  }
 }
 export async function connectWallet():Promise<string>{
   const p=provider();
