@@ -37,7 +37,7 @@ Copy `frontend/.env.example` to `frontend/.env`, then populate **an actual verif
 
 Only connect an injected EIP-1193 wallet to Studionet. Private keys used by CLI scripts stay in ignored `.env` files. The driver also supports the repository-local encrypted CLI keystores through `CLAUSEBID_KEYSTORE_PASSWORD`; it never writes private keys to the repository. Contract writes require separate protocol fees; escrow value must not be treated as payment for protocol fees.
 
-The browser subscribes to `accountsChanged`, `chainChanged` and `disconnect`, and silently restores an already-authorized account with `eth_accounts` after reload without opening a signing prompt. The Disconnect wallet control clears only ClauseBid's local session; injected-wallet authorization remains under the wallet's own controls, so a refresh may restore that account. Locally tracked transaction hashes are restored after reload, and a parent receipt is never presented as an external payout receipt. The claim explorer keys archived receipts by chain, deployment, beneficiary and amount; the superseded deployment is retained only as historical evidence. Studionet read-rate-limit responses use bounded retry-after backoff and are shown as unavailable rather than stale state. The Playwright suite uses an explicitly test-only `VITE_E2E_FIXTURE=true` synthetic contract-state harness for recovery/error UI; production builds never set that flag. The deployed URL is separately checked against the real Studionet binding. The production bundle and genuine-wallet verification status are recorded in `evidence/studionet/frontend-verification.json`.
+The browser subscribes to `accountsChanged`, `chainChanged` and `disconnect`, and silently restores an already-authorized account with `eth_accounts` after reload without opening a signing prompt. The Disconnect wallet control clears only ClauseBid's local session; injected-wallet authorization remains under the wallet's own controls, so a refresh may restore that account. Locally tracked transaction hashes are restored after reload, and a parent receipt is never presented as an external payout receipt. The claim explorer keys archived receipts by chain, deployment, beneficiary and amount; the superseded deployment is retained only as historical evidence. Read traffic uses one shared coordinator with three concurrent slots, identical-read deduplication, deployment-scoped confirmed-data caching, and at most two transient retries with exponential and retry-after backoff. Concurrent retries reserve staggered slots after a rate-limit response. Create performs no contract reads; Marketplace and Home load only procurement records; My dashboard loads wallet-relevant activity and that wallet's credit; Audit Explorer loads claim history. Read diagnostics retain only the RPC method, contract method, sanitized provider code/status, retry count and a bounded message. A read failure in an optional area preserves confirmed cards and shows a specific warning. Studionet read-rate-limit responses are shown as unavailable rather than fabricated state. Financial writes and contract reverts are never retried by the read coordinator. The Playwright suite uses an explicitly test-only `VITE_E2E_FIXTURE=true` synthetic contract-state harness for recovery/error UI; production builds never set that flag. The deployed URL is separately checked against the real Studionet binding. The production bundle and genuine-wallet verification status are recorded in `evidence/studionet/frontend-verification.json`.
 
 ## Live evidence
 
@@ -64,15 +64,20 @@ written to `evidence/studionet/live-negative.json`.
 $env:CLAUSEBID_CONTRACT_ADDRESS='0x24f95ED58fcfa4e339C504fF388A922347757515'
 $env:CLAUSEBID_KEYSTORE_PASSWORD='set only in this shell'
 node scripts/live-negative.mjs start
-node scripts/live-negative.mjs run
+node scripts/live-negative.mjs resume
 node scripts/live-negative.mjs status
 ```
 
-`run` is safe to resume after interruption. It records finalized parent
+`resume` is safe to run after interruption. It records finalized parent
 receipts, successful or failed execution, state snapshots, entitlement values,
-and pre/post native-balance reads. It never retries an ambiguous claim or
-outbound value transfer. The runner's hosted results are automated multi-wallet
-Studionet integration testing, not Direct Mode or mocked consensus evidence.
+and pre/post native-balance reads. Reads are serialized with bounded spacing;
+only transient reads may retry, and an in-flight or hashless write is preserved
+as `SUBMISSION_ERROR` instead of being resubmitted. It never retries an
+ambiguous claim or outbound value transfer. The runner's hosted results are
+automated multi-wallet Studionet integration testing, not Direct Mode or mocked
+consensus evidence. Its finite scenarios include no-award refund, unrevealed
+bonds, delivery recovery, buyer refusal, correction exhaustion, neutral
+unwind, timely reserved reviews and stale review cancellation.
 
 Do not accept a finality flag without execution success. Do not turn timed-out review transactions into automatic approvals. Direct Mode mocks are not external validator evidence. A failed outbound value message does not automatically restore money. There is no privileged administrator rescue path.
 

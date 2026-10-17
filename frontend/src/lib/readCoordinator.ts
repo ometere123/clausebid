@@ -44,7 +44,7 @@ const textParts=(value:unknown):string[]=>{
   }
   return parts;
 };
-const numeric=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?value:typeof value==='string'&&/^\d+$/.test(value)?Number(value):undefined;
+const numeric=(value:unknown)=>typeof value==='number'&&Number.isFinite(value)?value:typeof value==='string'&&/^-?\d+(?:\.\d+)?$/.test(value)?Number(value):undefined;
 const findNumber=(value:unknown,keys:string[]):number|undefined=>{
   const queue:unknown[]=[value];const seen=new Set<object>();
   while(queue.length){
@@ -67,7 +67,13 @@ export function diagnoseReadError(contractMethod:string,error:unknown,attempts:n
   const contract=/execution reverted|revert|invalid argument|invalid params|method not found|contract error/i.test(text);
   return {rpcMethod:'gen_call',contractMethod,kind:rate?'rate-limit':provider?'provider-unavailable':contract?'contract-error':'unknown',code,httpStatus,retryAfterSeconds:retry,attempts,message:sanitize(text||'Studionet read failed')};
 }
-export function isTransientReadDiagnostic(diagnostic:ReadDiagnostic):boolean{return diagnostic.kind==='rate-limit'||diagnostic.kind==='provider-unavailable'}
+export function isTransientReadDiagnostic(diagnostic:ReadDiagnostic):boolean{
+  // readContractWithTimeout cannot cancel the SDK promise underneath it. Do
+  // not start another request while that timed-out request may still be in
+  // flight; the UI can be refreshed explicitly once the provider recovers.
+  const code=String(diagnostic.code??'').toUpperCase();
+  return (diagnostic.kind==='rate-limit'||diagnostic.kind==='provider-unavailable')&&code!=='ETIMEDOUT'&&!/timed out|timeout/i.test(diagnostic.message);
+}
 
 export class ReadCoordinator{
   private readonly concurrency:number;

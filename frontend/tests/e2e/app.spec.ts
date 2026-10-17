@@ -15,6 +15,12 @@ async function installWallet(page:Page,{authorized=true}:{authorized?:boolean}={
         if(method==='eth_requestAccounts'){if(state.rejectConnect)throw Object.assign(new Error('User rejected wallet connection'),{code:4001});if(!state.accounts.length)state.accounts=[state.account];return state.accounts;}
         if(method==='eth_accounts')return state.accounts;
         if(method==='eth_chainId')return state.chain;
+        // genlayer-js performs these read-only transaction-preparation calls
+        // before it reaches eth_sendTransaction. Keep the fixture hermetic so
+        // a provider outage cannot mask a wallet-signature assertion.
+        if(method==='eth_getTransactionCount')return '0x0';
+        if(method==='eth_estimateGas')return '0x30d40';
+        if(method==='eth_gasPrice')return '0x0';
         if(method==='wallet_switchEthereumChain'){state.chain=String((params as any)?.[0]?.chainId||chain);emit('chainChanged',state.chain);return null;}
         if(method==='wallet_addEthereumChain'){state.chain=chain;emit('chainChanged',state.chain);return null;}
         if(method==='wallet_getSnaps')return {};
@@ -40,6 +46,14 @@ test('navigates all seven screens and preserves mobile navigation',async({page})
   for(const [label,heading] of [['Marketplace','Discover procurements.'],['Create','Create a procurement.'],['Auction room','Auction #1'],['Delivery','Delivery #1'],['My dashboard','My procurement dashboard.'],['Audit','The audit explorer.'],['Home',"The lowest bid"]] as const){
     await page.getByRole('button',{name:label,exact:true}).click();
     await expect(page.getByRole('heading',{name:heading}).first()).toBeVisible();
+    if(label==='Marketplace'){
+      await expect(page.getByRole('heading',{name:'Individual claim ledger'})).toHaveCount(0);
+      await expect(page.getByRole('button',{name:'Claim native GEN'})).toHaveCount(0);
+    }
+    if(label==='Create'){
+      await expect(page.getByRole('button',{name:'Fund and publish procurement'})).toBeVisible();
+      await expect(page.getByText(/read failed|failed to fetch version/i)).toHaveCount(0);
+    }
   }
   await page.setViewportSize({width:390,height:844});
   await page.getByRole('button',{name:'Open navigation'}).click();

@@ -39,7 +39,6 @@ const password=process.env.CLAUSEBID_KEYSTORE_PASSWORD;
 const LOCAL_FILE=process.env.CLAUSEBID_NEGATIVE_STATE ?? 'evidence/live-negative.local.json';
 const PUBLIC_FILE=process.env.CLAUSEBID_NEGATIVE_EVIDENCE ?? 'evidence/studionet/live-negative.json';
 const SOURCE_SHA='18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4';
-const BROWSER_BUYER='0xfcef676044658b5402f590dabe9e04a0f640522f';
 
 async function loadAccount(index){
  const key=process.env[KEYS[index]];
@@ -60,18 +59,32 @@ const clients=wallets.map(account=>createClient({chain:studionet,account}));
 const names=['buyer','sellerA','sellerB','sellerC','sellerD'];
 const addresses=wallets.map(wallet=>wallet.address.toLowerCase());
 const readClient=clients[0];
+const READ_TIMEOUT_MS=15000;
+const RPC_GAP_MS=8000;
 let lastRpcAt=0;
 let rpcTail=Promise.resolve();
+async function withReadTimeout(label,operation){
+ let timer;
+ try{return await Promise.race([operation(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('Studionet read timed out: '+label),{code:'ETIMEDOUT'})),READ_TIMEOUT_MS)})])}
+ finally{if(timer)clearTimeout(timer)}
+}
 async function rpc(label,operation,{retryRead=false}={}){
  const run=rpcTail.then(async()=>{
-  for(let attempt=0;attempt<(retryRead?8:1);attempt++){
-   const gap=2200-(Date.now()-lastRpcAt);
+  const maxAttempts=retryRead?2:1;
+  for(let attempt=0;attempt<maxAttempts;attempt++){
+   const gap=RPC_GAP_MS-(Date.now()-lastRpcAt);
    if(gap>0)await sleep(gap);
    try{const result=await operation();lastRpcAt=Date.now();return result}
    catch(error){
     lastRpcAt=Date.now();
     const text=String(error)+' '+JSON.stringify(error?.cause??'');
-    if(!retryRead||!/rate limit|retry_after_seconds|-32029|429/i.test(text)||attempt===7)throw error;
+    // A provider-wide hourly quota will not recover during a short retry
+    // window. Stop immediately and let the resumable runner preserve a
+    // truthful BLOCKED state instead of spending more requests on a known
+    // outage. Only the bounded transient read classes below are retryable.
+    if(!retryRead||/requests per hour|hourly rate limit|rate limit exceeded.*hour/i.test(text))throw error;
+    const transient=/rate limit|retry_after_seconds|-32029|\b429\b|\b408\b|\b502\b|\b503\b|\b504\b|failed to fetch|fetch failed|timed out|timeout|etimedout/i.test(text);
+    if(!transient||attempt===maxAttempts-1)throw error;
     const match=text.match(/retry_after_seconds[^0-9]*(\d+)/i);
     const delay=Math.min(60000,Math.max(5000,((match?Number(match[1]):15)+1)*1000));
     console.log('Studionet rate limit while',label,'waiting',delay,'ms');
@@ -89,6 +102,8 @@ const clauses=[
  'All required components must be included in the all-in GEN price.',
 ];
 const reference='Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.';
+const compliantTerms=clauses.map((clause,index)=>`Clause ${index+1} accepted exactly: ${clause}`).join(' ');
+const nonCompliantTerms='I exclude clause 4 and require extra payment for required components, so this offer is not all-in and is not compliant.';
 
 const defaultState={
  version:1,network:'studionet',chainId:CHAIN_ID,contract:ADDRESS,sourceSha256:SOURCE_SHA,
@@ -135,36 +150,39 @@ function commitment(auction,seller,price,terms,salt){
  const domain=['clausebid/commit/v1',String(CHAIN_ID),DOMAIN_ADDRESS,String(auction),seller.toLowerCase(),String(price),terms,salt];
  return createHash('sha256').update(packed(domain)).digest('hex');
 }
-async function read(method,args=[]){return rpc('read '+method,()=>readClient.readContract({address:ADDRESS,functionName:method,args}),{retryRead:true});}
+async function read(method,args=[]){return rpc('read '+method,()=>withReadTimeout(method,()=>readClient.readContract({address:ADDRESS,functionName:method,args})),{retryRead:true});}
 async function tryRead(method,args=[]){try{return await read(method,args)}catch{return null}}
 async function nativeBalance(address){
- try{return String(await rpc('balance',()=>readClient.getBalance({address}),{retryRead:true}));}catch{}
+ try{return String(await rpc('balance',()=>withReadTimeout('balance',()=>readClient.getBalance({address})),{retryRead:true}));}catch{}
  try{
-  const result=await rpc('eth_getBalance',()=>readClient.request({method:'eth_getBalance',params:[address,'latest']}),{retryRead:true});
+  const result=await rpc('eth_getBalance',()=>withReadTimeout('eth_getBalance',()=>readClient.request({method:'eth_getBalance',params:[address,'latest']})),{retryRead:true});
   return String(BigInt(result));
  }catch{return null}
 }
 async function economy(){return read('get_economy');}
-async function compactState(auctionId,includeBalances=false){
- const procurement=await read('get_procurement',[auctionId]);
+function uniqueAddresses(values){return Array.from(new Set(values.filter(value=>/^0x[0-9a-fA-F]{40}$/.test(String(value??''))).map(value=>String(value).toLowerCase())))}
+function focusAddresses(item,procurement,extra=[]){return uniqueAddresses([procurement?.buyer,item?.buyer,item?.commit?.seller,item?.participants?.seller,...extra])}
+async function compactState(item,includeBalances=false){
+ const auctionId=item.auctionId;const procurement=await read('get_procurement',[auctionId]);
  const offers=[];
  for(let position=0;position<Number(procurement.bidder_count);position++){
   const seller=await read('get_seller',[auctionId,position]);
   offers.push({position,seller,offer:await read('get_offer',[auctionId,seller])});
  }
+ const focused=focusAddresses(item,procurement,offers.map(entry=>entry.seller));
  const credits={};
- for(const address of [...addresses,BROWSER_BUYER])credits[address]=String(await read('get_credit',[address]));
+ for(const address of focused)credits[address]=String(await read('get_credit',[address]));
  const result={capturedAt:nowIso(),procurement,offers,credits,economy:await economy()};
  if(includeBalances){
   result.nativeBalances={};
-  for(const address of [...addresses,BROWSER_BUYER,ADDRESS.toLowerCase()])result.nativeBalances[address]=await nativeBalance(address);
+  for(const address of [...focused,ADDRESS.toLowerCase()])result.nativeBalances[address]=await nativeBalance(address);
  }
  return result;
 }
-async function economySnapshot(includeBalances=false){
- const result={capturedAt:nowIso(),economy:await economy(),credits:{}};
- for(const address of [...addresses,BROWSER_BUYER])result.credits[address]=String(await read('get_credit',[address]));
- if(includeBalances){result.nativeBalances={};for(const address of [...addresses,BROWSER_BUYER,ADDRESS.toLowerCase()])result.nativeBalances[address]=await nativeBalance(address)}
+async function economySnapshot(item,includeBalances=false,extra=[]){
+ const focused=focusAddresses(item,null,extra);const result={capturedAt:nowIso(),economy:await economy(),credits:{}};
+ for(const address of focused)result.credits[address]=String(await read('get_credit',[address]));
+ if(includeBalances){result.nativeBalances={};for(const address of [...focused,ADDRESS.toLowerCase()])result.nativeBalances[address]=await nativeBalance(address)}
  return result;
 }
 function scenario(name){
@@ -211,6 +229,7 @@ async function tx(item,key,who,method,args=[],value=0n,expected='SUCCESS'){
  if(existingKey){
   const existing=state.transactions[existingKey];
   if(existing?.finalizedAt)return existing;
+  if(existing?.observed==='SUBMISSION_ERROR')throw Error('Submission outcome unavailable for '+method+'; no transaction hash was returned. Inspect the provider before any manual retry.');
   if(existing?.hash){
    const details=await transactionDetails(existing.hash,expected==='FAILURE',existing.method==='claim');
    existing.finalizedAt=nowIso();existing.receipt=receiptSummary(details.receipt,details.transaction,details.triggered);existing.trace=details.trace??null;
@@ -233,7 +252,7 @@ async function tx(item,key,who,method,args=[],value=0n,expected='SUCCESS'){
  return entry;
 }
 async function markState(item,label,includeBalances=false){
- const snapshot=await compactState(item.auctionId,includeBalances);
+ const snapshot=await compactState(item,includeBalances);
  if(label==='before')item.before=snapshot;else item.after=snapshot;
  if(includeBalances)item.balanceSnapshots.push({label,...snapshot});
  persist();return snapshot;
@@ -244,14 +263,14 @@ async function setTerminal(item,status,observed){
 async function claim(item,who,label){
  const due=BigInt(await read('get_credit',[addresses[who]]));
  if(due===0n)return null;
- const before=await economySnapshot(true);item.balanceSnapshots.push({label:label+':before',...before});persist();
+ const before=await economySnapshot(item,true,[addresses[who]]);item.balanceSnapshots.push({label:label+':before',...before});persist();
  const result=await tx(item,label,who,'claim',[],0n,'SUCCESS');
- const after=await economySnapshot(true);item.balanceSnapshots.push({label:label+':after',...after});
+ const after=await economySnapshot(item,true,[addresses[who]]);item.balanceSnapshots.push({label:label+':after',...after});
  item.entitlements.push({beneficiary:addresses[who],amountWei:String(due),claimTransaction:result.hash,observed:'DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'});persist();return result;
 }
 async function createAuction(item){
  if(item.auctionId)return;
- if(!item.before)item.before=await economySnapshot(false);
+ if(!item.before)item.before=await economySnapshot(item,false,[addresses[0]]);
  const result=await tx(item,'create',0,'create_procurement',[item.title,reference,...clauses,5n*U],5n*U,'SUCCESS');
  item.auctionId=Number(await read('get_count'));item.buyer=addresses[0];
  item.deadlines=await read('get_procurement',[item.auctionId]);
@@ -283,8 +302,18 @@ async function ensureReview(item){
   const result=await tx(item,'begin-review',item.commit.who,'begin_bid_review',[item.auctionId,item.commit.seller],0n,'SUCCESS');item.reviewReservation=result.hash;persist();
  }
 }
+const isConsensusDisagreement=(entry)=>entry?.observed==='FAILURE'&&Number(entry?.receipt?.status)===7&&Number(entry?.receipt?.result)===7&&String(entry?.receipt?.leaderExecution??'').toUpperCase()==='SUCCESS';
+const lastMethodTransaction=(item,method)=>Object.values(item.transactionKeys??{}).map(key=>state.transactions[key]).filter(entry=>entry?.method===method).at(-1);
 async function evaluate(item){
- const result=await tx(item,'evaluate',item.commit.who,'evaluate_bid',[item.auctionId,item.commit.seller],0n,'SUCCESS');item.evaluation=result.hash;item.bidVerdict=await read('get_offer',[item.auctionId,item.commit.seller]);persist();
+ const attempt=(item.evaluationAttempts??0)+1;if(attempt>6)throw Error('Bid review did not reach agreement after six finalized attempts');
+ const key='evaluate-'+attempt;
+ try{
+  const result=await tx(item,key,item.commit.who,'evaluate_bid',[item.auctionId,item.commit.seller],0n,'SUCCESS');item.evaluation=result.hash;item.evaluationAttempts=attempt;item.nextRetryAt=0;item.bidVerdict=await read('get_offer',[item.auctionId,item.commit.seller]);persist();return true;
+ }catch(error){
+  const entry=state.transactions[item.transactionKeys[key]];
+  if(!isConsensusDisagreement(entry))throw error;
+  item.evaluationAttempts=attempt;item.nextRetryAt=Math.floor(Date.now()/1000)+30;item.notes.push({at:nowIso(),note:'Bid review finalized without successful consensus; retry '+attempt+' recorded',transaction:entry.hash});persist();return false;
+ }
 }
 async function award(item){
  const result=await tx(item,'award',4,'finalize_award',[item.auctionId],0n,'SUCCESS');item.award=result.hash;item.awardState=await read('get_procurement',[item.auctionId]);persist();
@@ -300,13 +329,27 @@ async function beginDeliveryReview(item){
  const result=await tx(item,'delivery-review-begin-'+(item.deliveryCount??0),4,'begin_delivery_review',[item.auctionId],0n,'SUCCESS');item.deliveryReviewReservation=result.hash;persist();
 }
 async function reviewDelivery(item){
- const result=await tx(item,'delivery-review-'+(item.deliveryCount??0),4,'review_delivery',[item.auctionId],0n,'SUCCESS');
- item.deliveryVerdict=await read('get_delivery_verdict',[item.auctionId,item.deliveryCount]);item.lastDeliveryDecision=result.hash;item.deliveryState=await read('get_procurement',[item.auctionId]);persist();return item.deliveryState.status;
+ const attempt=(item.deliveryReviewAttempts??0)+1;if(attempt>6)throw Error('Delivery review did not reach agreement after six finalized attempts');
+ const key='delivery-review-'+(item.deliveryCount??0)+'-'+attempt;
+ try{
+  const result=await tx(item,key,4,'review_delivery',[item.auctionId],0n,'SUCCESS');item.deliveryReviewAttempts=attempt;item.nextRetryAt=0;item.deliveryVerdict=await read('get_delivery_verdict',[item.auctionId,item.deliveryCount]);item.lastDeliveryDecision=result.hash;item.deliveryState=await read('get_procurement',[item.auctionId]);persist();return item.deliveryState.status;
+ }catch(error){
+  const entry=state.transactions[item.transactionKeys[key]];
+  if(!isConsensusDisagreement(entry))throw error;
+  item.deliveryReviewAttempts=attempt;item.nextRetryAt=Math.floor(Date.now()/1000)+30;item.notes.push({at:nowIso(),note:'Delivery review finalized without successful consensus; retry '+attempt+' recorded',transaction:entry.hash});persist();return null;
+ }
+}
+async function blockUnexpectedBidVerdict(item){
+ const verdict=String(item.bidVerdict?.verdict??'UNKNOWN');
+ item.status='BLOCKED';item.observed='BID_REVIEW_FAIL_CLOSED';
+ item.notes.push({at:nowIso(),note:'Live bid review finalized without the COMPLIANT verdict required by this scenario; no award or downstream economic action was submitted.',verdict,transaction:item.evaluation??null});
+ await markState(item,'after',false);persist();
 }
 async function expire(item){const result=await tx(item,'expire',4,'expire_delivery',[item.auctionId],0n,'SUCCESS');item.expire=result.hash;persist()}
 async function accept(item){const result=await tx(item,'accept',0,'accept_delivery',[item.auctionId],0n,'SUCCESS');item.accept=result.hash;persist()}
 async function expectedFailure(item,key,who,method,args=[],value=0n){return tx(item,key,who,method,args,value,'FAILURE')}
 function deadlinePassed(row,field,extra=0){return Math.floor(Date.now()/1000)>=Number(row[field])+extra}
+const hasReveal=(item)=>Boolean(item.revealTransaction||item.reveal);
 async function progressUnrevealed(item){
  const row=await read('get_procurement',[item.auctionId]);
  if(!item.finalize&&deadlinePassed(row,'reveal_end')){await markState(item,'before',false);item.finalize=(await tx(item,'finalize',4,'finalize_award',[item.auctionId],0n,'SUCCESS')).hash;persist()}
@@ -314,10 +357,20 @@ async function progressUnrevealed(item){
  if(item.finalize&&!item.buyerClaim){const result=await claim(item,0,'buyer-claim');item.buyerClaim=result?.hash??null;persist()}
  if(item.buyerClaim&&!item.duplicate){await expectedFailure(item,'duplicate',0,'claim');item.duplicate=true;await setTerminal(item,'PASS','NO_AWARD_BOND_FORFEITURE_AND_SINGLE_USE_CLAIM');}
 }
+async function progressNoAward(item){
+ const row=await read('get_procurement',[item.auctionId]);
+ if(!hasReveal(item)&&deadlinePassed(row,'commit_end'))await reveal(item);
+ if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
+ if(!item.evaluation&&item.reviewReservation&&deadlinePassed(row,'reveal_end'))await evaluate(item);
+ if(item.evaluation&&item.bidVerdict?.verdict==='COMPLIANT')return blockUnexpectedBidVerdict(item);
+ if(item.evaluation&&!item.finalize){const result=await tx(item,'finalize',4,'finalize_award',[item.auctionId],0n,'SUCCESS');item.finalize=result.hash;item.finalizeState=await read('get_procurement',[item.auctionId]);persist()}
+ if(item.finalize&&!item.buyerClaim){const result=await claim(item,0,'buyer-claim');item.buyerClaim=result?.hash??null;persist()}
+ if(item.buyerClaim)await setTerminal(item,'PASS','NO_COMPLIANT_OFFER_BUYER_REFUND');
+}
 async function progressDeliveryDefault(item){
  const row=await read('get_procurement',[item.auctionId]);
- if(!item.reveal&&deadlinePassed(row,'commit_end')){await reveal(item)}
- if(!item.reviewReservation&&item.reveal&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
+ if(!hasReveal(item)&&deadlinePassed(row,'commit_end')){await reveal(item)}
+ if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
  if(!item.evaluation&&item.reviewReservation&&deadlinePassed(row,'reveal_end'))await evaluate(item);
  if(!item.award&&item.evaluation&&item.bidVerdict?.verdict==='COMPLIANT')await award(item);
  if(item.award&&!item.delivery&&deadlinePassed(item.awardState,'delivery_due'))await expire(item);
@@ -326,8 +379,8 @@ async function progressDeliveryDefault(item){
 }
 async function progressBuyerPass(item){
  const row=await read('get_procurement',[item.auctionId]);
- if(!item.reveal&&deadlinePassed(row,'commit_end'))await reveal(item);
- if(!item.reviewReservation&&item.reveal&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
+ if(!hasReveal(item)&&deadlinePassed(row,'commit_end'))await reveal(item);
+ if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
  if(!item.evaluation&&item.reviewReservation&&deadlinePassed(row,'reveal_end'))await evaluate(item);
  if(!item.award&&item.evaluation&&item.bidVerdict?.verdict==='COMPLIANT')await award(item);
  if(item.award&&!item.delivery)await submit(item,compliantText);
@@ -340,8 +393,8 @@ async function progressBuyerPass(item){
 }
 async function progressCorrectionDefault(item){
  const row=await read('get_procurement',[item.auctionId]);
- if(!item.reveal&&deadlinePassed(row,'commit_end'))await reveal(item);
- if(!item.reviewReservation&&item.reveal&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
+ if(!hasReveal(item)&&deadlinePassed(row,'commit_end'))await reveal(item);
+ if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
  if(!item.evaluation&&item.reviewReservation&&deadlinePassed(row,'reveal_end'))await evaluate(item);
  if(!item.award&&item.evaluation&&item.bidVerdict?.verdict==='COMPLIANT')await award(item);
  if(item.award&&!item.delivery)await submit(item,defectiveText);
@@ -358,8 +411,8 @@ async function progressCorrectionDefault(item){
 }
 async function progressUncertain(item){
  const row=await read('get_procurement',[item.auctionId]);
- if(!item.reveal&&deadlinePassed(row,'commit_end'))await reveal(item);
- if(!item.reviewReservation&&item.reveal&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
+ if(!hasReveal(item)&&deadlinePassed(row,'commit_end'))await reveal(item);
+ if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
  if(!item.evaluation&&item.reviewReservation&&deadlinePassed(row,'reveal_end'))await evaluate(item);
  if(!item.award&&item.evaluation&&item.bidVerdict?.verdict==='COMPLIANT')await award(item);
  if(item.award&&!item.delivery)await submit(item,uncertainText);
@@ -379,8 +432,8 @@ async function progressUncertain(item){
 }
 async function progressReservedTimely(item){
  const row=await read('get_procurement',[item.auctionId]);
- if(!item.reveal&&deadlinePassed(row,'commit_end'))await reveal(item);
- if(!item.reviewReservation&&item.reveal&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
+ if(!hasReveal(item)&&deadlinePassed(row,'commit_end'))await reveal(item);
+ if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
  if(!item.evaluation&&item.reviewReservation&&deadlinePassed(row,'review_end',5))await evaluate(item);
  if(!item.award&&item.evaluation&&item.bidVerdict?.verdict==='COMPLIANT')await award(item);
  if(item.award&&!item.delivery)await submit(item,compliantText);
@@ -391,8 +444,8 @@ async function progressReservedTimely(item){
 }
 async function progressReservedStale(item){
  const row=await read('get_procurement',[item.auctionId]);
- if(!item.reveal&&deadlinePassed(row,'commit_end'))await reveal(item);
- if(!item.reviewReservation&&item.reveal&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
+ if(!hasReveal(item)&&deadlinePassed(row,'commit_end'))await reveal(item);
+ if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
  if(!item.cancel&&item.reviewReservation&&deadlinePassed(row,'review_end',REVIEW_GRACE+5)){
   await markState(item,'before',false);const result=await tx(item,'cancel',4,'cancel_bid_review',[item.auctionId,item.commit.seller],0n,'SUCCESS');item.cancel=result.hash;persist()
  }
@@ -403,8 +456,13 @@ async function progressReservedStale(item){
 }
 async function progress(item){
  if(item.status!=='IN_PROGRESS'&&item.status!=='RUNNING')return;
+ if(item.kind!=='unrevealed'&&hasReveal(item)&&!item.reviewReservation&&deadlinePassed(item.deadlines,'review_end')){
+  item.status='BLOCKED';item.notes.push({at:nowIso(),note:'Review reservation was not made before the ordinary cutoff; no late reservation or financial retry was submitted.'});persist();return;
+ }
  item.status='RUNNING';persist();
  if(item.kind==='unrevealed')return progressUnrevealed(item);
+ if(item.kind==='no-award')return progressNoAward(item);
+ if(item.evaluation&&item.bidVerdict&&item.bidVerdict.verdict!=='COMPLIANT')return blockUnexpectedBidVerdict(item);
  if(item.kind==='delivery-default')return progressDeliveryDefault(item);
  if(item.kind==='buyer-pass')return progressBuyerPass(item);
  if(item.kind==='correction-default')return progressCorrectionDefault(item);
@@ -412,6 +470,20 @@ async function progress(item){
  if(item.kind==='reserved-timely')return progressReservedTimely(item);
  if(item.kind==='reserved-stale')return progressReservedStale(item);
  throw Error('No progress handler for '+item.kind);
+}
+function reviveConsensusDisagreements(){
+ let changed=false;
+ for(const item of Object.values(state.scenarios)){
+  if(item.status!=='BLOCKED')continue;
+  const bidFailure=lastMethodTransaction(item,'evaluate_bid');
+  const deliveryFailure=lastMethodTransaction(item,'review_delivery');
+  if(!item.evaluation&&item.reviewReservation&&isConsensusDisagreement(bidFailure)){
+   item.status='IN_PROGRESS';item.evaluationAttempts=1;item.nextRetryAt=Math.floor(Date.now()/1000);item.notes.push({at:nowIso(),note:'Resumed after a recorded MAJORITY_DISAGREE bid review; no economic transition occurred.'});changed=true;
+  }else if(!item.lastDeliveryDecision&&item.deliveryReviewReservation&&isConsensusDisagreement(deliveryFailure)){
+   item.status='IN_PROGRESS';item.deliveryReviewAttempts=1;item.nextRetryAt=Math.floor(Date.now()/1000);item.notes.push({at:nowIso(),note:'Resumed after a recorded MAJORITY_DISAGREE delivery review; no economic transition occurred.'});changed=true;
+  }
+ }
+ if(changed)persist();
 }
 const specs=[
  {name:'unrevealed-bond',kind:'unrevealed',title:'Live negative unrevealed bond',expected:'No award; unrevealed seller bond forfeited; buyer refund; unauthorized and duplicate claims fail',who:1,price:1n,terms:'The all-in offer is committed but intentionally not revealed.'},
@@ -421,6 +493,19 @@ const specs=[
  {name:'uncertain-unwind',kind:'uncertain',title:'Live negative uncertain delivery',expected:'Independent UNKNOWN fulfillment decision produces neutral unwind',who:1,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
  {name:'reserved-timely',kind:'reserved-timely',title:'Live negative timely reserved review',expected:'Review reserved before cutoff finalizes after ordinary deadline without expiry',who:2,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
  {name:'reserved-stale',kind:'reserved-stale',title:'Live negative stale reserved review',expected:'Unresolved review cancels only after grace, then no-award credits settle',who:3,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
+ {name:'delivery-default-retry',kind:'delivery-default',title:'Live negative delivery default retry batch',expected:'Compliant award followed by seller delivery expiry and buyer recovery',who:2,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
+ {name:'buyer-refusal-pass-retry',kind:'buyer-pass',title:'Live negative buyer refusal pass retry batch',expected:'Buyer dispute followed by independent PASS and seller payment',who:3,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
+ {name:'correction-default-retry',kind:'correction-default',title:'Live negative correction exhaustion retry batch',expected:'Three material failures produce seller default and buyer recovery',who:4,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
+ {name:'uncertain-unwind-retry',kind:'uncertain',title:'Live negative uncertain delivery retry batch',expected:'Independent UNKNOWN fulfillment decision produces neutral unwind',who:1,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
+ {name:'reserved-timely-retry',kind:'reserved-timely',title:'Live negative timely reserved review retry batch',expected:'Review reserved before cutoff finalizes after ordinary deadline without expiry',who:2,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
+ {name:'reserved-stale-retry',kind:'reserved-stale',title:'Live negative stale reserved review retry batch',expected:'Unresolved review cancels only after grace, then no-award credits settle',who:3,price:2n,terms:'All four frozen obligations are included in the all-in 2 GEN offer.'},
+ {name:'no-compliant-refund',kind:'no-award',title:'Live negative no compliant offer refund',expected:'Non-compliant offer is rejected and buyer receives a full budget refund',who:1,price:2n,terms:nonCompliantTerms},
+ {name:'delivery-default-compliant',kind:'delivery-default',title:'Live negative compliant seller delivery default',expected:'Compliant seller wins, misses delivery, and buyer recovers the reserved price and bond',who:2,price:2n,terms:compliantTerms},
+ {name:'buyer-refusal-pass-compliant',kind:'buyer-pass',title:'Live negative buyer refusal independent pass',expected:'Buyer dispute is followed by independent PASS and seller payment',who:3,price:2n,terms:compliantTerms},
+ {name:'correction-default-compliant',kind:'correction-default',title:'Live negative correction exhaustion compliant seller',expected:'Two correction opportunities fail and seller defaults with buyer recovery',who:4,price:2n,terms:compliantTerms},
+ {name:'uncertain-unwind-compliant',kind:'uncertain',title:'Live negative uncertain delivery neutral unwind',expected:'Uncertain delivery produces a neutral unwind',who:1,price:2n,terms:compliantTerms},
+ {name:'reserved-timely-compliant',kind:'reserved-timely',title:'Live negative timely reserved compliant review',expected:'Reserved review survives the ordinary deadline and successful delivery settles',who:2,price:2n,terms:compliantTerms},
+ {name:'reserved-stale-compliant',kind:'reserved-stale',title:'Live negative stale reserved compliant review',expected:'Stale unresolved review cancels only after grace and neutral recovery settles',who:3,price:2n,terms:compliantTerms},
 ];
 async function start(){
  if(!state.startedAt)state.startedAt=nowIso();
@@ -439,8 +524,41 @@ async function status(){
  }
  console.log(JSON.stringify({updatedAt:state.updatedAt,errors:state.errors},null,2));
 }
+function nextWakeSeconds(item){
+ const now=Math.floor(Date.now()/1000);const row=item.deadlines??{};
+ const until=(timestamp,extra=0)=>Math.max(1,Number(timestamp||0)+extra-now+1);
+ if(Number(item.nextRetryAt||0)>now)return until(item.nextRetryAt);
+ if(item.kind==='unrevealed'){
+  if(!item.finalize)return until(row.reveal_end);
+  if(!item.unauthorized||!item.buyerClaim||!item.duplicate)return 1;
+  return 1;
+ }
+ if(!hasReveal(item))return until(row.commit_end);
+ if(!item.reviewReservation)return until(row.reveal_end);
+ if(!item.evaluation){
+  if(item.kind==='reserved-timely')return until(row.review_end,5);
+  if(item.kind==='reserved-stale')return until(row.review_end,REVIEW_GRACE+5);
+  return 1;
+ }
+ if(!item.award&&item.bidVerdict?.verdict==='COMPLIANT')return 1;
+ if(item.kind==='delivery-default'){
+  if(!item.expire)return until(item.awardState?.delivery_due);
+  return 1;
+ }
+ if(item.kind==='buyer-pass'||item.kind==='correction-default'||item.kind==='uncertain')return 1;
+ if(item.kind==='reserved-timely'){
+  if(!item.award)return 1;
+  return item.accept?1:until(row.review_end,5);
+ }
+ if(item.kind==='reserved-stale'){
+  if(!item.cancel)return until(row.review_end,REVIEW_GRACE+5);
+  return 1;
+ }
+ return 30;
+}
 async function run(){
  if(!state.startedAt||Object.keys(state.scenarios).length<specs.length)await start();
+ reviveConsensusDisagreements();
  while(Object.values(state.scenarios).some(item=>item.status==='IN_PROGRESS'||item.status==='RUNNING')){
   let progressMade=false;
   for(const item of Object.values(state.scenarios)){
@@ -450,7 +568,11 @@ async function run(){
   }
   persist();
   if(Object.values(state.scenarios).every(item=>item.status!=='IN_PROGRESS'&&item.status!=='RUNNING'))break;
-  if(!progressMade){console.log('Waiting for real Studionet deadlines; next check in 30 seconds.');await sleep(30000)}
+   if(!progressMade){
+    const active=Object.values(state.scenarios).filter(item=>item.status==='IN_PROGRESS'||item.status==='RUNNING');
+    const delay=Math.min(300,Math.max(5,Math.min(...active.map(nextWakeSeconds))));
+    console.log('Waiting for real Studionet deadlines; next check in '+delay+' seconds.');await sleep(delay*1000)
+   }
  }
  console.log('Negative runner reached terminal states.');
 }

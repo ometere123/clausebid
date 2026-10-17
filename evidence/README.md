@@ -25,6 +25,17 @@ Verified release artifacts:
 - `studionet/frontend-verification.json` records the production bundle binding, Vercel deployment and the strict separation between fixture browser tests and the incomplete real-wallet browser attempt.
 - `studionet/evidence-matrix.md` maps security/economic claims to exact tests and finalized hosted transactions, and labels historical evidence from the superseded address.
 
+The frontend read-resilience implementation is covered by the coordinator unit
+tests and the production Chrome check. It limits `gen_call` concurrency,
+deduplicates identical reads, caches only deployment-scoped confirmed values,
+retries transient provider failures a bounded number of times, and serializes
+retry slots after rate-limit responses. Timed-out SDK reads are not retried
+because the pinned SDK does not expose cancellation and a second request could
+overlap the first. Contract reverts and all financial writes are single-attempt
+operations. The Create screen has no read-dependent load, so unrelated
+marketplace, credit, economy and claim failures cannot block procurement
+preparation.
+
 The replacement claim parent receipts expose outbound message records and exact
 beneficiaries/values. The replacement archive also records post-claim recipient
 balance reads; because no pre-run snapshot was captured for that run, those

@@ -17,6 +17,11 @@ describe('ReadCoordinator',()=>{
   const result=await coordinator.request('recover','get_economy',async()=>{calls++;if(calls===1)throw Object.assign(rpcError(429,'Too Many Requests'),{retry_after_seconds:0.01});if(calls===2)throw rpcError(503,'Service unavailable');return {outstanding_wei:'0'}});
   expect(result).toEqual({outstanding_wei:'0'});expect(calls).toBe(3);expect(delays).toBeGreaterThanOrEqual(20);
  });
+ it('retains negative JSON-RPC rate-limit codes in safe diagnostics',async()=>{
+  const diagnostics:any[]=[];const coordinator=new ReadCoordinator({maxRetries:0,onDiagnostic:d=>diagnostics.push(d),sleep:async()=>{}});
+  await expect(coordinator.request('rate-code','get_count',async()=>{throw Object.assign(new Error('rate limited'),{code:'-32029'})})).rejects.toBeInstanceOf(ReadRequestError);
+  expect(diagnostics[0]).toMatchObject({kind:'rate-limit',code:-32029,contractMethod:'get_count'});
+ });
  it('serializes concurrent retry slots after a shared rate limit',async()=>{
   let clock=0;const delays:number[]=[];const attempts=new Map<string,number>();
   const coordinator=new ReadCoordinator({concurrency:2,maxRetries:1,baseDelayMs:100,maxDelayMs:1000,now:()=>clock,sleep:async ms=>{delays.push(ms);clock+=ms}});
@@ -28,7 +33,12 @@ describe('ReadCoordinator',()=>{
   let calls=0;const diagnostics:any[]=[];
   const coordinator=new ReadCoordinator({onDiagnostic:d=>diagnostics.push(d),sleep:async()=>{}});
   await expect(coordinator.request('revert','get_credit',async()=>{calls++;throw Object.assign(new Error('execution reverted: 0x1234567890abcdef1234567890abcdef12345678'),{code:3})})).rejects.toBeInstanceOf(ReadRequestError);
-  expect(calls).toBe(1);expect(diagnostics[0]).toMatchObject({kind:'contract-error',contractMethod:'get_credit',rpcMethod:'gen_call'});expect(diagnostics[0].message).not.toContain('0x1234567890abcdef');
+ expect(calls).toBe(1);expect(diagnostics[0]).toMatchObject({kind:'contract-error',contractMethod:'get_credit',rpcMethod:'gen_call'});expect(diagnostics[0].message).not.toContain('0x1234567890abcdef');
+ });
+ it('does not overlap an uncancellable timed-out read with a retry',async()=>{
+  let calls=0;const coordinator=new ReadCoordinator({maxRetries:2,sleep:async()=>{}});
+  await expect(coordinator.request('timeout','get_procurement',async()=>{calls++;throw Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'})})).rejects.toBeInstanceOf(ReadRequestError);
+  expect(calls).toBe(1);
  });
  it('keeps partial reads usable and retries only the failed item',async()=>{
   const coordinator=new ReadCoordinator({concurrency:2,maxRetries:1,baseDelayMs:1,sleep:async()=>{}});
@@ -37,5 +47,11 @@ describe('ReadCoordinator',()=>{
    coordinator.request('auction-2','get_procurement',async()=>{throw rpcError(503,'temporary provider outage')})
   ]);
   expect(results[0]).toMatchObject({status:'fulfilled',value:{title:'one'}});expect(results[1].status).toBe('rejected');
+ });
+ it('allows a failed read key to recover on a later request',async()=>{
+  const coordinator=new ReadCoordinator({maxRetries:0,sleep:async()=>{}});let calls=0;
+  await expect(coordinator.request('recover-later','get_procurement',async()=>{calls++;throw rpcError(503,'temporary provider outage')})).rejects.toBeInstanceOf(ReadRequestError);
+  await expect(coordinator.request('recover-later','get_procurement',async()=>{calls++;return {title:'recovered'}})).resolves.toEqual({title:'recovered'});
+  expect(calls).toBe(2);
  });
 });

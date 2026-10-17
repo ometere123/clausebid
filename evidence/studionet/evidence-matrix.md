@@ -11,6 +11,7 @@ GEN settlement.
 |---|---|---|
 | Current source is deployed exactly | `scripts/preflight.mjs`; `source-verification.json` | `0x3e2cfa63e81b509cda9297ebe48d60516c5370682a8c0458d94d773d2bf7e408` — FINALIZED, MAJORITY_AGREE, leader SUCCESS |
 | Buyer response deadline is enforced | `tests/direct/test_state_machine.py::test_buyer_cannot_accept_after_response_window`; replacement run accepted within the response deadline | `0xbc96fc914c9fc81fb9da582f3ce0a89f51981fe73df6deb80abd4c78623205f5` |
+| Read pressure is bounded without financial-write retries | `frontend/src/lib/readCoordinator.test.ts` covers deduplication, concurrency, 429/503 backoff, partial reads, recovery, diagnostics and timeout non-overlap; Playwright covers page-specific read graphs | No live transaction is claimed for this deterministic frontend property |
 
 ## Funded hosted demonstration
 
@@ -68,7 +69,7 @@ re-evaluation, malicious material leader proposals, fabricated evidence and
 prompt-injection-as-evidence behavior.
 
 These tests have no hosted transaction hash by design. The latest local result
-was `27 passed`; the CI run is the authoritative reproducible result.
+was `25 passed`; the CI run is the authoritative reproducible result.
 
 ## Settlement interpretation
 
