@@ -59,9 +59,12 @@ describe('ReadCoordinator',()=>{
   await expect(coordinator.request('generic-error','get_seller',async()=>{calls++;throw Object.assign(new Error('RPC returned an unknown error'),{code:-1})})).rejects.toBeInstanceOf(ReadRequestError);
   expect(calls).toBe(1);expect(diagnostics[0]).toMatchObject({kind:'unknown',code:-1,attempts:1});
  });
- it('records timeouts separately and never overlaps an uncancellable request with a retry',async()=>{
+ it('records timeouts separately and does not retry them',async()=>{
   const diagnostic=diagnoseReadError('get_procurement',Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'}),1);
   expect(diagnostic).toMatchObject({kind:'timeout',code:'ETIMEDOUT'});
+  let calls=0;const coordinator=new ReadCoordinator({maxRetries:2,sleep:async()=>{}});
+  await expect(coordinator.request('timeout','get_procurement',async()=>{calls++;throw Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'})})).rejects.toBeInstanceOf(ReadRequestError);
+  expect(calls).toBe(1);
  });
  it('drops queued reads whose page or wallet scope is obsolete before starting them',async()=>{
   let finish!:()=>void;let calls=0;const coordinator=new ReadCoordinator({concurrency:1,sleep:async()=>{}});
