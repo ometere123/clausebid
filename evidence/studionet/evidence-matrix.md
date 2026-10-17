@@ -11,7 +11,8 @@ GEN settlement.
 |---|---|---|
 | Current source is deployed exactly | `scripts/preflight.mjs`; `source-verification.json` | `0x586ee807c33b94b58363ddff16d19f8141375a5309d0e5c5c78ed1a4c438be7c` — FINALIZED, MAJORITY_AGREE, leader SUCCESS; address `0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b`; source SHA256 `85939c9191661b34ec16a5d37a0d6ee1ad1ccb562ac066dec8b843c01879e241` |
 | Buyer-configurable timing is validated | `tests/direct/test_variable_timing.py`; 16 boundary, cap, independent-duration, deadline-anchor, multi-auction and overflow tests | Direct Mode only; hosted minimum and default schedule storage are recorded below |
-| Read pressure is bounded without financial-write retries | `frontend/src/lib/readCoordinator.test.ts` covers deduplication, concurrency, 429/503 backoff, partial reads, recovery, diagnostics and timeout non-overlap; Playwright covers page-specific read graphs | No live transaction is claimed for this deterministic frontend property |
+| Read pressure is bounded without financial-write retries | `frontend/src/lib/readCoordinator.test.ts` covers deduplication, priority ordering, cancellation, generic `-1`, timeout classification, 429/503 backoff, partial reads, recovery, diagnostics and timeout non-overlap; Playwright covers seven-screen navigation, independent credit and economy sections, bounded 19-record claims, partial failures and refresh recovery | No live transaction is claimed for this deterministic frontend property |
+| Current-contract read latency was checked without a write | Read-only `genlayer-js@1.1.8` probe against Studionet 61999 measured `get_count` 2.131 s, `get_economy` 1.306 s and two `get_procurement` calls at 1.294 s and 1.303 s on 2026-10-17; the browser timeout is bounded at 20 seconds | No transaction submitted; no wallet was connected |
 
 The previous `0x24f95...7515` deployment and the earlier `0x9c70...8827`
 deployment remain explicit historical records in `deployment.json` and their

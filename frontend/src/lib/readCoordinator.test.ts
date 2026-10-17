@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest';
-import {ReadCoordinator,ReadRequestError} from './readCoordinator';
+import {diagnoseReadError,ReadCoordinator,ReadRequestCancelled,ReadRequestError} from './readCoordinator';
 
 const rpcError=(status:number,message:string)=>Object.assign(new Error(message),{status});
 
@@ -53,5 +53,28 @@ describe('ReadCoordinator',()=>{
   await expect(coordinator.request('recover-later','get_procurement',async()=>{calls++;throw rpcError(503,'temporary provider outage')})).rejects.toBeInstanceOf(ReadRequestError);
   await expect(coordinator.request('recover-later','get_procurement',async()=>{calls++;return {title:'recovered'}})).resolves.toEqual({title:'recovered'});
   expect(calls).toBe(2);
+ });
+ it('does not classify generic JSON-RPC code -1 as a rate limit or retry it',async()=>{
+  let calls=0;const diagnostics:any[]=[];const coordinator=new ReadCoordinator({maxRetries:2,onDiagnostic:d=>diagnostics.push(d),sleep:async()=>{}});
+  await expect(coordinator.request('generic-error','get_seller',async()=>{calls++;throw Object.assign(new Error('RPC returned an unknown error'),{code:-1})})).rejects.toBeInstanceOf(ReadRequestError);
+  expect(calls).toBe(1);expect(diagnostics[0]).toMatchObject({kind:'unknown',code:-1,attempts:1});
+ });
+ it('records timeouts separately and never overlaps an uncancellable request with a retry',async()=>{
+  const diagnostic=diagnoseReadError('get_procurement',Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'}),1);
+  expect(diagnostic).toMatchObject({kind:'timeout',code:'ETIMEDOUT'});
+ });
+ it('drops queued reads whose page or wallet scope is obsolete before starting them',async()=>{
+  let finish!:()=>void;let calls=0;const coordinator=new ReadCoordinator({concurrency:1,sleep:async()=>{}});
+  const first=coordinator.request('first','get_count',async()=>{calls++;await new Promise<void>(resolve=>{finish=resolve});return 1});
+  let current=true;
+  const second=coordinator.request('second','get_procurement',async()=>{calls++;return {title:'obsolete'}} ,{isCurrent:()=>current});
+  current=false;finish();await expect(first).resolves.toBe(1);await expect(second).rejects.toBeInstanceOf(ReadRequestCancelled);expect(calls).toBe(1);
+ });
+ it('prioritizes wallet and selected-procurement reads ahead of discovery work',async()=>{
+  let finish!:()=>void;const started:string[]=[];const coordinator=new ReadCoordinator({concurrency:1,sleep:async()=>{}});
+  const first=coordinator.request('first','get_count',async()=>{started.push('first');await new Promise<void>(resolve=>{finish=resolve});return 1});
+  const low=coordinator.request('low','get_procurement',async()=>{started.push('low');return 'low'},{priority:10});
+  const high=coordinator.request('high','get_credit',async()=>{started.push('high');return 'high'},{priority:100});
+  finish();await Promise.all([first,low,high]);expect(started).toEqual(['first','high','low']);
  });
 });

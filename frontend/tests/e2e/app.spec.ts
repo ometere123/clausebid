@@ -129,8 +129,37 @@ test('recovers persisted transactions and exposes the claim audit ledger',async(
   await page.addInitScript(()=>localStorage.setItem('clausebid:pending',JSON.stringify([{hash:'0x'+'b'.repeat(64),action:'claim',phase:'submitted',timestamp:Date.now()}])));
   await page.goto('/#/audit');
   await expect(page.getByRole('heading',{name:'Individual claim ledger'})).toBeVisible();
-  await expect(page.getByText('Claim #1')).toBeVisible();
-  await expect(page.getByText('Dispatched Pending External Settlement')).toBeVisible();
+  await expect(page.getByText('Claim #1',{exact:true})).toBeVisible();
+  await expect(page.getByText('Dispatched Pending External Settlement').first()).toBeVisible();
   await expect(page.getByText('Wallet transaction history')).toBeVisible();
   await expect(page.getByText('0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')).toBeVisible();
+});
+
+test('keeps wallet credit visible when procurement discovery is incomplete',async({page})=>{
+  await page.addInitScript(()=>sessionStorage.setItem('clausebid:e2e-scenario','dashboard-partial'));
+  await page.goto('/#/dashboard');
+  await expect(page.getByText('1 GEN')).toBeVisible();
+  await expect(page.getByText('GEN claimable')).toBeVisible();
+  await expect(page.getByText('No complete no-match result is available yet.')).toBeVisible();
+});
+
+test('keeps audit economy and bounded claim history independent from selected procurement',async({page})=>{
+  await page.addInitScript(()=>sessionStorage.setItem('clausebid:e2e-scenario','audit-economy-partial'));
+  await page.goto('/#/audit');
+  await expect(page.getByText('Outstanding liabilities')).toBeVisible();
+  await expect(page.locator('.kv').filter({hasText:'Outstanding liabilities'}).locator('b')).toHaveText('0 GEN');
+  await expect(page.getByText('Selected procurement state is unavailable. Treasury totals and claim history remain independent.')).toBeVisible();
+  await expect(page.getByText('Claim #19',{exact:true})).toBeVisible();
+});
+
+test('labels incomplete claim history and recovers on refresh without inventing an empty ledger',async({page})=>{
+  await page.addInitScript(()=>sessionStorage.setItem('clausebid:e2e-scenario','claims-partial'));
+  await page.goto('/#/audit');
+  await expect(page.getByText('Claim history is incomplete or based on previously confirmed data. Do not infer missing payment evidence.')).toBeVisible();
+  await expect(page.getByText('Claim #3',{exact:true})).toBeVisible();
+  await expect(page.getByText('Claim #19',{exact:true})).toHaveCount(0);
+  await page.evaluate(()=>sessionStorage.removeItem('clausebid:e2e-scenario'));
+  await page.getByRole('button',{name:'Load authoritative state'}).click();
+  await expect(page.getByText('Claim #19',{exact:true})).toBeVisible();
+  await expect(page.getByText('Claim history is incomplete or based on previously confirmed data. Do not infer missing payment evidence.')).toHaveCount(0);
 });

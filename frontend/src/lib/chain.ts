@@ -10,7 +10,7 @@ export function isSuccessful(receipt:any):boolean {
 }
 import {studionet} from 'genlayer-js/chains';
 import {safeJson,errorText} from './format';
-import {diagnoseReadError,ReadCoordinator,ReadRequestError,type ReadDiagnostic} from './readCoordinator';
+import {diagnoseReadError,ReadCoordinator,ReadRequestCancelled,ReadRequestError,isReadRequestCancelled,type ReadDiagnostic} from './readCoordinator';
 export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim();
 export const CHAIN_ID=61999;
 export type Eip1193Provider={
@@ -23,18 +23,25 @@ type Write={functionName:string;args?:unknown[];value?:bigint};
 const asAddr=()=>{if(!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT))throw new Error('VITE_CLAUSEBID_ADDRESS must be a deployed 0x address');return CONTRACT as `0x${string}`;};
 const provider=()=>{if(!window.ethereum)throw new Error('Install or enable an injected EIP-1193 wallet.');return window.ethereum as Eip1193Provider;};
 const desiredChain=()=>`0x${CHAIN_ID.toString(16)}`;
-const reader:any=createClient({chain:studionet});
-const READ_TIMEOUT_MS=8000;
+const createReadClient=()=>createClient({chain:studionet});
+let reader:any=createReadClient();
+export const READ_TIMEOUT_MS=20000;
+let pendingReadDrains:Promise<void>[]=[];
 async function readContractWithTimeout(request:()=>Promise<unknown>):Promise<unknown>{
+ if(pendingReadDrains.length)await Promise.allSettled(pendingReadDrains);
  let timer:ReturnType<typeof setTimeout>|undefined;
- try{return await Promise.race([request(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'})),READ_TIMEOUT_MS)})])}
+ let timeoutTriggered=false;
+ const underlying=Promise.resolve().then(request);
+ const drain=underlying.then(()=>{},()=>{});
+ try{return await Promise.race([underlying,new Promise((_,reject)=>{timer=setTimeout(()=>{timeoutTriggered=true;reject(Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'}))},READ_TIMEOUT_MS)})])}
+ catch(error){if(timeoutTriggered){pendingReadDrains=[...pendingReadDrains,drain];void drain.then(()=>{pendingReadDrains=pendingReadDrains.filter(item=>item!==drain)})}throw error}
  finally{if(timer)clearTimeout(timer)}
 }
 const CACHE_TTL=5000;
 const CACHE_STORAGE='clausebid:confirmed:'+CHAIN_ID+':'+CONTRACT.toLowerCase();
 type CacheEntry={value:any;confirmedAt:number;expiresAt:number};
-export type ReadResult<T=any>={value:T;source:'live'|'cache';confirmedAt:number;warning?:ReadDiagnostic};
-export type ReadOptions={force?:boolean;cacheTtlMs?:number};
+export type ReadResult<T=any>={value:T;source:'live'|'cache'|'stale';confirmedAt:number;warning?:ReadDiagnostic};
+export type ReadOptions={force?:boolean;cacheTtlMs?:number;priority?:number;isCurrent?:()=>boolean;scopeKey?:string};
 const memoryCache=new Map<string,CacheEntry>();
 let diagnostics:ReadDiagnostic[]=[];
 const encode=(value:any)=>JSON.stringify(value,(_,item)=>typeof item==='bigint'?'__clausebid_bigint__'+item:item);
@@ -55,12 +62,13 @@ function setCached(key:string,value:any,ttl:number){
 export function invalidateReadCache(){
  memoryCache.clear();try{sessionStorage.removeItem(CACHE_STORAGE)}catch{}
 }
+export function resetReadClient(){reader=createReadClient()}
 function recordDiagnostic(diagnostic:ReadDiagnostic){
  diagnostics=[diagnostic,...diagnostics].slice(0,30);
  try{sessionStorage.setItem(CACHE_STORAGE+':diagnostics',encode(diagnostics))}catch{}
 }
 export function readDiagnostics():ReadDiagnostic[]{return diagnostics.slice()}
-const coordinator=new ReadCoordinator({concurrency:3,maxRetries:2,baseDelayMs:750,maxDelayMs:30000,onDiagnostic:recordDiagnostic});
+const coordinator=new ReadCoordinator({concurrency:3,maxRetries:2,baseDelayMs:750,maxDelayMs:30000,onDiagnostic:recordDiagnostic,onRetry:()=>resetReadClient()});
 export function decodeContractValue(raw:any):any {
   if(raw instanceof Map)return Object.fromEntries(Array.from(raw.entries(),([k,v])=>[String(k),decodeContractValue(v)]));
   if(Array.isArray(raw))return raw.map(decodeContractValue);
@@ -70,14 +78,18 @@ export function decodeContractValue(raw:any):any {
 }
 export async function readDetailed(functionName:string,args:unknown[]=[],options:ReadOptions={}):Promise<ReadResult>{
  const key=cacheKey(functionName,args);const cached=getCached(key);
+ if(options.isCurrent&&!options.isCurrent())throw new ReadRequestCancelled();
  if(!options.force&&cached&&cached.expiresAt>Date.now())return {value:cached.value,source:'cache',confirmedAt:cached.confirmedAt};
  try{
-  const raw=await coordinator.request(key,functionName,()=>readContractWithTimeout(()=>reader.readContract({address:asAddr(),functionName,args})));
+  const coordinatorKey=options.scopeKey?`${key}:scope:${options.scopeKey}`:key;
+  const raw=await coordinator.request(coordinatorKey,functionName,()=>readContractWithTimeout(()=>reader.readContract({address:asAddr(),functionName,args})),{priority:options.priority,isCurrent:options.isCurrent});
   const value=decodeContractValue(raw);setCached(key,value,options.cacheTtlMs??CACHE_TTL);
   return {value,source:'live',confirmedAt:Date.now()};
  }catch(error){
-  const diagnostic=error instanceof ReadRequestError?error.diagnostic:diagnoseReadError(functionName,error,1);recordDiagnostic(diagnostic);
-  if(cached)return {value:cached.value,source:'cache',confirmedAt:cached.confirmedAt,warning:diagnostic};
+  if(isReadRequestCancelled(error))throw error;
+  const diagnostic=error instanceof ReadRequestError?error.diagnostic:diagnoseReadError(functionName,error,1);
+  if(cached){const fallback={...diagnostic,lastSuccessfulReadAt:cached.confirmedAt,confirmedDataDisplayed:true};recordDiagnostic(fallback);return {value:cached.value,source:'stale',confirmedAt:cached.confirmedAt,warning:fallback}}
+  const unavailable={...diagnostic,confirmedDataDisplayed:false};recordDiagnostic(unavailable);
   throw error;
  }
 }
