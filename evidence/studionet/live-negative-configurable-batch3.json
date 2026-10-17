@@ -1,0 +1,2187 @@
+{
+  "network": "studionet",
+  "chainId": 61999,
+  "rpc": "https://studio.genlayer.com/api",
+  "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+  "sourceSha256": "85939c9191661b34ec16a5d37a0d6ee1ad1ccb562ac066dec8b843c01879e241",
+  "generatedAt": "2026-10-17T12:13:00.662Z",
+  "runner": "scripts/live-negative.mjs",
+  "realElapsedTime": true,
+  "noAutomaticTransferRetry": true,
+  "scenarios": {
+    "delivery-default-compliant": {
+      "name": "delivery-default-compliant",
+      "kind": "delivery-default",
+      "auctionId": 10,
+      "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+      "participants": {
+        "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+        "wallet": "sellerB"
+      },
+      "expected": "Compliant seller wins, misses delivery, and buyer recovers the reserved price and bond",
+      "observed": "SELLER_DELIVERY_DEFAULT_BUYER_RECOVERY",
+      "status": "PASS",
+      "deadlines": {
+        "bidder_count": 0,
+        "bond": "500000000000000000",
+        "budget": "5000000000000000000",
+        "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+        "commit_end": 1792233094,
+        "commit_seconds": 600,
+        "correction_seconds": 1200,
+        "deliverable": "",
+        "delivery_attempts": 0,
+        "delivery_due": 0,
+        "delivery_review_end": 0,
+        "delivery_review_grace_seconds": 1800,
+        "delivery_review_seconds": 1800,
+        "delivery_review_started": 0,
+        "delivery_seconds": 1800,
+        "eligibility_seconds": 1800,
+        "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+        "r2": "The artifact must include the approved facts without contradiction.",
+        "r3": "The artifact must be public text and no more than 6000 characters.",
+        "r4": "All required components must be included in the all-in GEN price.",
+        "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+        "response_due": 0,
+        "response_seconds": 600,
+        "reveal_end": 1792234294,
+        "reveal_seconds": 1200,
+        "review_end": 1792236094,
+        "review_grace_seconds": 1800,
+        "status": "BIDDING",
+        "title": "Live negative compliant seller delivery default",
+        "total_seconds": 1800,
+        "winner": "",
+        "winning_price": 0
+      },
+      "before": {
+        "capturedAt": "2026-10-17T10:20:21.407Z",
+        "economy": {
+          "claims": 9,
+          "contract_balance_wei": "161000000000000000000",
+          "dispatched_wei": "64000000000000000000",
+          "outstanding_wei": "161000000000000000000"
+        },
+        "credits": {
+          "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0",
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0"
+        }
+      },
+      "after": {
+        "capturedAt": "2026-10-17T11:46:52.129Z",
+        "procurement": {
+          "bidder_count": 1,
+          "bond": "500000000000000000",
+          "budget": "5000000000000000000",
+          "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "commit_end": 1792233094,
+          "commit_seconds": 600,
+          "correction_seconds": 1200,
+          "deliverable": "",
+          "delivery_attempts": 0,
+          "delivery_due": 1792236379,
+          "delivery_review_end": 0,
+          "delivery_review_grace_seconds": 1800,
+          "delivery_review_seconds": 1800,
+          "delivery_review_started": 0,
+          "delivery_seconds": 1800,
+          "eligibility_seconds": 1800,
+          "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+          "r2": "The artifact must include the approved facts without contradiction.",
+          "r3": "The artifact must be public text and no more than 6000 characters.",
+          "r4": "All required components must be included in the all-in GEN price.",
+          "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+          "response_due": 0,
+          "response_seconds": 600,
+          "reveal_end": 1792234294,
+          "reveal_seconds": 1200,
+          "review_end": 1792236094,
+          "review_grace_seconds": 1800,
+          "status": "DEFAULTED",
+          "title": "Live negative compliant seller delivery default",
+          "total_seconds": 1800,
+          "winner": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "winning_price": "2000000000000000000"
+        },
+        "offers": [
+          {
+            "position": 0,
+            "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+            "offer": {
+              "bond": "500000000000000000",
+              "commitment": "101642a72614541c9688d698e3827c059412ad9deb0a8d95cf0381de78d54d7f",
+              "evidence": "{\"quotes\": [\"Deliver one bounded digital-text artifact for the negative-path verification run.\", \"The artifact must include the approved facts without contradiction.\", \"The artifact must be public text and no more than 6000 characters.\", \"All required components must be included in the all-in GEN price.\"], \"statuses\": [\"PASS\", \"PASS\", \"PASS\", \"PASS\"]}",
+              "position": 0,
+              "price": "2000000000000000000",
+              "revealed": true,
+              "review_started": 1792234359,
+              "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+              "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+              "verdict": "COMPLIANT"
+            }
+          }
+        ],
+        "credits": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+          "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0"
+        },
+        "economy": {
+          "claims": 17,
+          "contract_balance_wei": "124500000000000000000",
+          "dispatched_wei": "122500000000000000000",
+          "outstanding_wei": "124500000000000000000"
+        },
+        "nativeBalances": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "121000000000000000000",
+          "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "72750000000000000002",
+          "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "124500000000000000000"
+        }
+      },
+      "balanceSnapshots": [
+        {
+          "label": "buyer-claim:before",
+          "capturedAt": "2026-10-17T11:43:04.020Z",
+          "economy": {
+            "claims": 15,
+            "contract_balance_wei": "130500000000000000000",
+            "dispatched_wei": "118250000000000000000",
+            "outstanding_wei": "128750000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "2500000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "118500000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "72750000000000000002",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "128750000000000000000"
+          }
+        },
+        {
+          "label": "buyer-claim:after",
+          "capturedAt": "2026-10-17T11:45:09.070Z",
+          "economy": {
+            "claims": 17,
+            "contract_balance_wei": "124500000000000000000",
+            "dispatched_wei": "122500000000000000000",
+            "outstanding_wei": "124500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "121000000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "72750000000000000002",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "124500000000000000000"
+          }
+        },
+        {
+          "label": "after",
+          "capturedAt": "2026-10-17T11:46:52.129Z",
+          "procurement": {
+            "bidder_count": 1,
+            "bond": "500000000000000000",
+            "budget": "5000000000000000000",
+            "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+            "commit_end": 1792233094,
+            "commit_seconds": 600,
+            "correction_seconds": 1200,
+            "deliverable": "",
+            "delivery_attempts": 0,
+            "delivery_due": 1792236379,
+            "delivery_review_end": 0,
+            "delivery_review_grace_seconds": 1800,
+            "delivery_review_seconds": 1800,
+            "delivery_review_started": 0,
+            "delivery_seconds": 1800,
+            "eligibility_seconds": 1800,
+            "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+            "r2": "The artifact must include the approved facts without contradiction.",
+            "r3": "The artifact must be public text and no more than 6000 characters.",
+            "r4": "All required components must be included in the all-in GEN price.",
+            "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+            "response_due": 0,
+            "response_seconds": 600,
+            "reveal_end": 1792234294,
+            "reveal_seconds": 1200,
+            "review_end": 1792236094,
+            "review_grace_seconds": 1800,
+            "status": "DEFAULTED",
+            "title": "Live negative compliant seller delivery default",
+            "total_seconds": 1800,
+            "winner": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+            "winning_price": "2000000000000000000"
+          },
+          "offers": [
+            {
+              "position": 0,
+              "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+              "offer": {
+                "bond": "500000000000000000",
+                "commitment": "101642a72614541c9688d698e3827c059412ad9deb0a8d95cf0381de78d54d7f",
+                "evidence": "{\"quotes\": [\"Deliver one bounded digital-text artifact for the negative-path verification run.\", \"The artifact must include the approved facts without contradiction.\", \"The artifact must be public text and no more than 6000 characters.\", \"All required components must be included in the all-in GEN price.\"], \"statuses\": [\"PASS\", \"PASS\", \"PASS\", \"PASS\"]}",
+                "position": 0,
+                "price": "2000000000000000000",
+                "revealed": true,
+                "review_started": 1792234359,
+                "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+                "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+                "verdict": "COMPLIANT"
+              }
+            }
+          ],
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0"
+          },
+          "economy": {
+            "claims": 17,
+            "contract_balance_wei": "124500000000000000000",
+            "dispatched_wei": "122500000000000000000",
+            "outstanding_wei": "124500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "121000000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "72750000000000000002",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "124500000000000000000"
+          }
+        }
+      ],
+      "entitlements": [
+        {
+          "beneficiary": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "amountWei": "2500000000000000000",
+          "claimTransaction": "0xcf13582dbbc307359b1498c1b72ccde6de23b6247d545814e4171be2c3844fa8",
+          "observed": "DISPATCHED_PENDING_EXTERNAL_SETTLEMENT"
+        }
+      ],
+      "claimReconciliation": null,
+      "claimReconciliations": [],
+      "transactions": [
+        {
+          "key": "delivery-default-compliant:create",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "create_procurement",
+          "hash": "0xcec9c42bb5b8e6acdfe70b49e689e78f027f6cd045d289596568e6b6f6de2c5e",
+          "submittedAt": "2026-10-17T10:20:42.362Z",
+          "finalizedAt": "2026-10-17T10:21:35.711Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "delivery-default-compliant:commit",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "commit_bid",
+          "hash": "0x7917ee0d67d294e48acb533c0223acf0ee472c92201a018ef18acd709d52d63c",
+          "submittedAt": "2026-10-17T10:29:17.421Z",
+          "finalizedAt": "2026-10-17T10:32:07.536Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "delivery-default-compliant:reveal",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "reveal_bid",
+          "hash": "0x055e9304e310f17f6f0259f577ad5607c722d2841f96ed8125e40c861ba3e903",
+          "submittedAt": "2026-10-17T10:32:07.541Z",
+          "finalizedAt": "2026-10-17T10:32:54.282Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "delivery-default-compliant:begin-review",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "begin_bid_review",
+          "hash": "0xa66056ac088fa2084e1dd5512c66df066c8432cb8604ae18458e4afcccb8725f",
+          "submittedAt": "2026-10-17T10:51:47.185Z",
+          "finalizedAt": "2026-10-17T10:53:14.742Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "delivery-default-compliant:evaluate-1",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "evaluate_bid",
+          "hash": "0xeeebf8eb4521fb566db8b2ac262f84eb27015c2a50b8387f3c82b4cb294d89e2",
+          "submittedAt": "2026-10-17T10:53:14.762Z",
+          "finalizedAt": "2026-10-17T10:55:17.557Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "delivery-default-compliant:award",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "finalize_award",
+          "hash": "0x4739c3f3a24ec475315b15f97d58e75aeb0616bdf8f5f830b2d8725c04fca2ef",
+          "submittedAt": "2026-10-17T10:55:27.173Z",
+          "finalizedAt": "2026-10-17T10:56:20.154Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "delivery-default-compliant:expire",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "expire_delivery",
+          "hash": "0x0667280e9af7f4fec0ce7b79f8c71b65d2a8215ecae1c6efa1b959f72116d7a4",
+          "submittedAt": "2026-10-17T11:42:01.125Z",
+          "finalizedAt": "2026-10-17T11:42:54.348Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "delivery-default-compliant:buyer-claim",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "claim",
+          "hash": "0xcf13582dbbc307359b1498c1b72ccde6de23b6247d545814e4171be2c3844fa8",
+          "submittedAt": "2026-10-17T11:43:58.771Z",
+          "finalizedAt": "2026-10-17T11:45:09.064Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": "0xcf13582dbbc307359b1498c1b72ccde6de23b6247d545814e4171be2c3844fa8",
+            "messages": [
+              {
+                "messageType": "0",
+                "recipient": "0x0d5540e0aD4B92Aa0ad4e5F1b8cD645ee1E363E7",
+                "value": 2500000000000000000,
+                "onAcceptance": false,
+                "saltNonce": null
+              }
+            ],
+            "triggeredTransactionIds": [
+              "0x51e3484d696dbb42e45aaba343cfae84a8e436627307585c37b252df8d47529b"
+            ]
+          },
+          "error": null
+        }
+      ],
+      "notes": [
+        {
+          "at": "2026-10-17T11:24:11.650Z",
+          "note": "Resumed after a bounded transient Studionet read outage. Persisted writes were not resubmitted; the next pass re-reads authoritative state before any new transition.",
+          "error": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+        }
+      ],
+      "errors": [
+        {
+          "at": "2026-10-17T11:20:11.113Z",
+          "message": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+        }
+      ]
+    },
+    "buyer-refusal-pass-compliant": {
+      "name": "buyer-refusal-pass-compliant",
+      "kind": "buyer-pass",
+      "auctionId": 11,
+      "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+      "participants": {
+        "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+        "wallet": "sellerC"
+      },
+      "expected": "Buyer dispute is followed by independent PASS and seller payment",
+      "observed": "BUYER_REFUSAL_INDEPENDENT_PASS_SELLER_PAYMENT",
+      "status": "PASS",
+      "deadlines": {
+        "bidder_count": 0,
+        "bond": "500000000000000000",
+        "budget": "5000000000000000000",
+        "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+        "commit_end": 1792233234,
+        "commit_seconds": 600,
+        "correction_seconds": 1200,
+        "deliverable": "",
+        "delivery_attempts": 0,
+        "delivery_due": 0,
+        "delivery_review_end": 0,
+        "delivery_review_grace_seconds": 1800,
+        "delivery_review_seconds": 1800,
+        "delivery_review_started": 0,
+        "delivery_seconds": 1800,
+        "eligibility_seconds": 1800,
+        "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+        "r2": "The artifact must include the approved facts without contradiction.",
+        "r3": "The artifact must be public text and no more than 6000 characters.",
+        "r4": "All required components must be included in the all-in GEN price.",
+        "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+        "response_due": 0,
+        "response_seconds": 600,
+        "reveal_end": 1792234434,
+        "reveal_seconds": 1200,
+        "review_end": 1792236234,
+        "review_grace_seconds": 1800,
+        "status": "BIDDING",
+        "title": "Live negative buyer refusal independent pass",
+        "total_seconds": 1800,
+        "winner": "",
+        "winning_price": 0
+      },
+      "before": {
+        "capturedAt": "2026-10-17T10:22:33.492Z",
+        "economy": {
+          "claims": 9,
+          "contract_balance_wei": "166000000000000000000",
+          "dispatched_wei": "64000000000000000000",
+          "outstanding_wei": "166000000000000000000"
+        },
+        "credits": {
+          "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0",
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0"
+        }
+      },
+      "after": {
+        "capturedAt": "2026-10-17T11:33:19.915Z",
+        "procurement": {
+          "bidder_count": 1,
+          "bond": "500000000000000000",
+          "budget": "5000000000000000000",
+          "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "commit_end": 1792233234,
+          "commit_seconds": 600,
+          "correction_seconds": 1200,
+          "deliverable": "Public artifact: Product A, Product B and Product C are described with the approved facts, every required component is included in the all-in price, and the text is bounded and public.",
+          "delivery_attempts": 1,
+          "delivery_due": 1792236569,
+          "delivery_review_end": 1792237223,
+          "delivery_review_grace_seconds": 1800,
+          "delivery_review_seconds": 1800,
+          "delivery_review_started": 1792236306,
+          "delivery_seconds": 1800,
+          "eligibility_seconds": 1800,
+          "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+          "r2": "The artifact must include the approved facts without contradiction.",
+          "r3": "The artifact must be public text and no more than 6000 characters.",
+          "r4": "All required components must be included in the all-in GEN price.",
+          "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+          "response_due": 1792235423,
+          "response_seconds": 600,
+          "reveal_end": 1792234434,
+          "reveal_seconds": 1200,
+          "review_end": 1792236234,
+          "review_grace_seconds": 1800,
+          "status": "SETTLED",
+          "title": "Live negative buyer refusal independent pass",
+          "total_seconds": 1800,
+          "winner": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "winning_price": "2000000000000000000"
+        },
+        "offers": [
+          {
+            "position": 0,
+            "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+            "offer": {
+              "bond": "500000000000000000",
+              "commitment": "b2f3689aa5661a83c5834eeba48fb1514bb7bd72b3f855c0433ed485641994bd",
+              "evidence": "{\"quotes\": [\"Deliver one bounded digital-text artifact for the negative-path verification run.\", \"The artifact must include the approved facts without contradiction.\", \"The artifact must be public text and no more than 6000 characters.\", \"All required components must be included in the all-in GEN price.\"], \"statuses\": [\"PASS\", \"PASS\", \"PASS\", \"PASS\"]}",
+              "position": 0,
+              "price": "2000000000000000000",
+              "revealed": true,
+              "review_started": 1792234661,
+              "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+              "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+              "verdict": "COMPLIANT"
+            }
+          }
+        ],
+        "credits": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+          "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+        },
+        "economy": {
+          "claims": 11,
+          "contract_balance_wei": "174500000000000000000",
+          "dispatched_wei": "72500000000000000000",
+          "outstanding_wei": "174500000000000000000"
+        },
+        "nativeBalances": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "105500000000000000000",
+          "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "2500000000000000000",
+          "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "174500000000000000000"
+        }
+      },
+      "balanceSnapshots": [
+        {
+          "label": "seller-claim:before",
+          "capturedAt": "2026-10-17T11:26:39.183Z",
+          "economy": {
+            "claims": 9,
+            "contract_balance_wei": "183000000000000000000",
+            "dispatched_wei": "64000000000000000000",
+            "outstanding_wei": "183000000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "6000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "2500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "99500000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "183000000000000000000"
+          }
+        },
+        {
+          "label": "seller-claim:after",
+          "capturedAt": "2026-10-17T11:28:36.085Z",
+          "economy": {
+            "claims": 10,
+            "contract_balance_wei": "180500000000000000000",
+            "dispatched_wei": "66500000000000000000",
+            "outstanding_wei": "180500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "6000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "99500000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "2500000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "180500000000000000000"
+          }
+        },
+        {
+          "label": "buyer-claim:before",
+          "capturedAt": "2026-10-17T11:29:40.557Z",
+          "economy": {
+            "claims": 10,
+            "contract_balance_wei": "180500000000000000000",
+            "dispatched_wei": "66500000000000000000",
+            "outstanding_wei": "180500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "6000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "99500000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "2500000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "180500000000000000000"
+          }
+        },
+        {
+          "label": "buyer-claim:after",
+          "capturedAt": "2026-10-17T11:31:36.888Z",
+          "economy": {
+            "claims": 11,
+            "contract_balance_wei": "174500000000000000000",
+            "dispatched_wei": "72500000000000000000",
+            "outstanding_wei": "174500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "105500000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "2500000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "174500000000000000000"
+          }
+        },
+        {
+          "label": "after",
+          "capturedAt": "2026-10-17T11:33:19.915Z",
+          "procurement": {
+            "bidder_count": 1,
+            "bond": "500000000000000000",
+            "budget": "5000000000000000000",
+            "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+            "commit_end": 1792233234,
+            "commit_seconds": 600,
+            "correction_seconds": 1200,
+            "deliverable": "Public artifact: Product A, Product B and Product C are described with the approved facts, every required component is included in the all-in price, and the text is bounded and public.",
+            "delivery_attempts": 1,
+            "delivery_due": 1792236569,
+            "delivery_review_end": 1792237223,
+            "delivery_review_grace_seconds": 1800,
+            "delivery_review_seconds": 1800,
+            "delivery_review_started": 1792236306,
+            "delivery_seconds": 1800,
+            "eligibility_seconds": 1800,
+            "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+            "r2": "The artifact must include the approved facts without contradiction.",
+            "r3": "The artifact must be public text and no more than 6000 characters.",
+            "r4": "All required components must be included in the all-in GEN price.",
+            "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+            "response_due": 1792235423,
+            "response_seconds": 600,
+            "reveal_end": 1792234434,
+            "reveal_seconds": 1200,
+            "review_end": 1792236234,
+            "review_grace_seconds": 1800,
+            "status": "SETTLED",
+            "title": "Live negative buyer refusal independent pass",
+            "total_seconds": 1800,
+            "winner": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+            "winning_price": "2000000000000000000"
+          },
+          "offers": [
+            {
+              "position": 0,
+              "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+              "offer": {
+                "bond": "500000000000000000",
+                "commitment": "b2f3689aa5661a83c5834eeba48fb1514bb7bd72b3f855c0433ed485641994bd",
+                "evidence": "{\"quotes\": [\"Deliver one bounded digital-text artifact for the negative-path verification run.\", \"The artifact must include the approved facts without contradiction.\", \"The artifact must be public text and no more than 6000 characters.\", \"All required components must be included in the all-in GEN price.\"], \"statuses\": [\"PASS\", \"PASS\", \"PASS\", \"PASS\"]}",
+                "position": 0,
+                "price": "2000000000000000000",
+                "revealed": true,
+                "review_started": 1792234661,
+                "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+                "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+                "verdict": "COMPLIANT"
+              }
+            }
+          ],
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+          },
+          "economy": {
+            "claims": 11,
+            "contract_balance_wei": "174500000000000000000",
+            "dispatched_wei": "72500000000000000000",
+            "outstanding_wei": "174500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "105500000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "2500000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "174500000000000000000"
+          }
+        }
+      ],
+      "entitlements": [
+        {
+          "beneficiary": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "amountWei": "2500000000000000000",
+          "claimTransaction": "0x9dad285f1040cc54f49c0782ccd95ddecb8255b4bd3e4bfd07a9ddc8bca5d47e",
+          "observed": "DISPATCHED_PENDING_EXTERNAL_SETTLEMENT"
+        },
+        {
+          "beneficiary": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "amountWei": "3000000000000000000",
+          "claimTransaction": "0x2b4bc2c5099529c4f662fadb6452efbb918b28824921e6d2eb9d9852e0ece214",
+          "observed": "CONSUMED_IN_AGGREGATED_CLAIM",
+          "claimTransactionAmountWei": "6000000000000000000"
+        }
+      ],
+      "claimReconciliation": null,
+      "claimReconciliations": [
+        {
+          "role": "buyer",
+          "beneficiary": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "expectedAmountWei": "3000000000000000000",
+          "aggregateTransaction": "0x2b4bc2c5099529c4f662fadb6452efbb918b28824921e6d2eb9d9852e0ece214",
+          "aggregateAmountWei": "6000000000000000000",
+          "observed": "CONSUMED_IN_AGGREGATED_CLAIM",
+          "note": "The immutable claim parent consumed a wallet-level aggregate credit. The expected scenario entitlement is recorded separately from the actual outbound message amount; no second claim was submitted."
+        }
+      ],
+      "transactions": [
+        {
+          "key": "buyer-refusal-pass-compliant:create",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "create_procurement",
+          "hash": "0x73cbeb41349dc704a014aaa3115cd452c0238f05506bc794b8eb29d5ab0860df",
+          "submittedAt": "2026-10-17T10:23:02.454Z",
+          "finalizedAt": "2026-10-17T10:23:47.124Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:commit",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "commit_bid",
+          "hash": "0x769037e788717c13c1cafe24f0a6153828467c556cbd54f48ca02753575977ea",
+          "submittedAt": "2026-10-17T10:29:27.051Z",
+          "finalizedAt": "2026-10-17T10:34:05.746Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:reveal",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "reveal_bid",
+          "hash": "0xf252c86d0930cd7d277550fe9d6a0d50fe6be4ebc9041ce07e3625d61415245b",
+          "submittedAt": "2026-10-17T10:34:05.748Z",
+          "finalizedAt": "2026-10-17T10:34:50.833Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:begin-review",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "begin_bid_review",
+          "hash": "0x4c7c9168f565fe4ff288b757337b0078bbd87a03677dfcb881d89e5b9451f4c9",
+          "submittedAt": "2026-10-17T10:56:49.048Z",
+          "finalizedAt": "2026-10-17T10:57:33.786Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:evaluate-1",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "evaluate_bid",
+          "hash": "0xd55c0735f2110637b84c86849d6b59c8dfec32a58d48c64ed450b7599bbbb19d",
+          "submittedAt": "2026-10-17T10:57:33.806Z",
+          "finalizedAt": "2026-10-17T10:58:26.987Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:award",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "finalize_award",
+          "hash": "0x7e5fdb8857db1dc09f93fcbc1f6c899f60bc4ec42c8e37a04fa9f4f5d6dbd89f",
+          "submittedAt": "2026-10-17T10:58:36.749Z",
+          "finalizedAt": "2026-10-17T10:59:21.267Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:delivery-0",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "submit_delivery",
+          "hash": "0x36c1b573a7e8770744e702462d07fafc8f4790489d1eb35d1b2c3d539aa8002d",
+          "submittedAt": "2026-10-17T10:59:30.972Z",
+          "finalizedAt": "2026-10-17T11:00:24.205Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:dispute-1",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "dispute_delivery",
+          "hash": "0xd5aacd09c4ca0b6bd0cf35b4e47d06ca980d88dd407cce5c2755ae590023e0be",
+          "submittedAt": "2026-10-17T11:00:24.224Z",
+          "finalizedAt": "2026-10-17T11:01:08.494Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:delivery-review-begin-1",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "begin_delivery_review",
+          "hash": "0x80490b5dcc75e6ca2c3a033016dbcc5da3adddaf4845229b5d2f76f8afef84a3",
+          "submittedAt": "2026-10-17T11:24:13.788Z",
+          "finalizedAt": "2026-10-17T11:24:59.015Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:delivery-review-1-1",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "review_delivery",
+          "hash": "0x607a3693e9c75d346d9e62c3c02c1559992b1830ab79767b61cebd4b6e71a8a9",
+          "submittedAt": "2026-10-17T11:24:59.037Z",
+          "finalizedAt": "2026-10-17T11:26:10.074Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:seller-claim",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "claim",
+          "hash": "0x9dad285f1040cc54f49c0782ccd95ddecb8255b4bd3e4bfd07a9ddc8bca5d47e",
+          "submittedAt": "2026-10-17T11:27:34.142Z",
+          "finalizedAt": "2026-10-17T11:28:36.083Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": "0x9dad285f1040cc54f49c0782ccd95ddecb8255b4bd3e4bfd07a9ddc8bca5d47e",
+            "messages": [
+              {
+                "messageType": "0",
+                "recipient": "0x2A9F27986ce895f5D5912a2833526C9b39009BBc",
+                "value": 2500000000000000000,
+                "onAcceptance": false,
+                "saltNonce": null
+              }
+            ],
+            "triggeredTransactionIds": [
+              "0x9eac90a48ef5f48b9b4fd76076abcea48c5f277f787134d8cc7426bbe559fde9"
+            ]
+          },
+          "error": null
+        },
+        {
+          "key": "buyer-refusal-pass-compliant:buyer-claim",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "claim",
+          "hash": "0x2b4bc2c5099529c4f662fadb6452efbb918b28824921e6d2eb9d9852e0ece214",
+          "submittedAt": "2026-10-17T11:30:35.339Z",
+          "finalizedAt": "2026-10-17T11:31:36.884Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": "0x2b4bc2c5099529c4f662fadb6452efbb918b28824921e6d2eb9d9852e0ece214",
+            "messages": [
+              {
+                "messageType": "0",
+                "recipient": "0x0d5540e0aD4B92Aa0ad4e5F1b8cD645ee1E363E7",
+                "value": 6000000000000000000,
+                "onAcceptance": false,
+                "saltNonce": null
+              }
+            ],
+            "triggeredTransactionIds": [
+              "0x128d07d3824c941c68b9193921f95285ccdd8c3369385d4758989523ba942335"
+            ]
+          },
+          "error": null
+        }
+      ],
+      "notes": [
+        {
+          "at": "2026-10-17T11:24:11.633Z",
+          "note": "Resuming a non-financial review write whose wallet preflight failed before a transaction hash was returned; no financial write or outbound transfer is retried.",
+          "method": "begin_delivery_review",
+          "error": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\nVersion: viem@2.57.7"
+        }
+      ],
+      "errors": [
+        {
+          "at": "2026-10-17T11:01:19.970Z",
+          "message": "Error: Submission outcome unavailable for begin_delivery_review: UnknownRpcError: An unknown RPC error occurred.\n\nDetails: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\nVersion: viem@2.57.7"
+        }
+      ]
+    },
+    "reserved-timely-compliant": {
+      "name": "reserved-timely-compliant",
+      "kind": "reserved-timely",
+      "auctionId": 12,
+      "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+      "participants": {
+        "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+        "wallet": "sellerB"
+      },
+      "expected": "Reserved review survives the ordinary deadline and successful delivery settles",
+      "observed": "TIMELY_RESERVED_REVIEW_FINALIZED_AFTER_ORDINARY_DEADLINE_AGGREGATED_CLAIM",
+      "status": "PASS",
+      "deadlines": {
+        "bidder_count": 0,
+        "bond": "500000000000000000",
+        "budget": "5000000000000000000",
+        "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+        "commit_end": 1792233366,
+        "commit_seconds": 600,
+        "correction_seconds": 1200,
+        "deliverable": "",
+        "delivery_attempts": 0,
+        "delivery_due": 0,
+        "delivery_review_end": 0,
+        "delivery_review_grace_seconds": 1800,
+        "delivery_review_seconds": 1800,
+        "delivery_review_started": 0,
+        "delivery_seconds": 1800,
+        "eligibility_seconds": 1800,
+        "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+        "r2": "The artifact must include the approved facts without contradiction.",
+        "r3": "The artifact must be public text and no more than 6000 characters.",
+        "r4": "All required components must be included in the all-in GEN price.",
+        "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+        "response_due": 0,
+        "response_seconds": 600,
+        "reveal_end": 1792234566,
+        "reveal_seconds": 1200,
+        "review_end": 1792236366,
+        "review_grace_seconds": 1800,
+        "status": "BIDDING",
+        "title": "Live negative timely reserved compliant review",
+        "total_seconds": 1800,
+        "winner": "",
+        "winning_price": 0
+      },
+      "before": {
+        "capturedAt": "2026-10-17T10:24:44.874Z",
+        "economy": {
+          "claims": 9,
+          "contract_balance_wei": "171000000000000000000",
+          "dispatched_wei": "64000000000000000000",
+          "outstanding_wei": "171000000000000000000"
+        },
+        "credits": {
+          "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0",
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0"
+        }
+      },
+      "after": {
+        "capturedAt": "2026-10-17T11:54:25.444Z",
+        "procurement": {
+          "bidder_count": 1,
+          "bond": "500000000000000000",
+          "budget": "5000000000000000000",
+          "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "commit_end": 1792233366,
+          "commit_seconds": 600,
+          "correction_seconds": 1200,
+          "deliverable": "Public artifact: Product A, Product B and Product C are described with the approved facts, every required component is included in the all-in price, and the text is bounded and public.",
+          "delivery_attempts": 1,
+          "delivery_due": 1792238821,
+          "delivery_review_end": 1792239484,
+          "delivery_review_grace_seconds": 1800,
+          "delivery_review_seconds": 1800,
+          "delivery_review_started": 0,
+          "delivery_seconds": 1800,
+          "eligibility_seconds": 1800,
+          "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+          "r2": "The artifact must include the approved facts without contradiction.",
+          "r3": "The artifact must be public text and no more than 6000 characters.",
+          "r4": "All required components must be included in the all-in GEN price.",
+          "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+          "response_due": 1792237684,
+          "response_seconds": 600,
+          "reveal_end": 1792234566,
+          "reveal_seconds": 1200,
+          "review_end": 1792236366,
+          "review_grace_seconds": 1800,
+          "status": "SETTLED",
+          "title": "Live negative timely reserved compliant review",
+          "total_seconds": 1800,
+          "winner": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "winning_price": "2000000000000000000"
+        },
+        "offers": [
+          {
+            "position": 0,
+            "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+            "offer": {
+              "bond": "500000000000000000",
+              "commitment": "7e55ebe9824404332d33e573287ba5ce23871eb3105bfacc8750180e5db3c23a",
+              "evidence": "{\"quotes\": [\"Deliver one bounded digital-text artifact for the negative-path verification run.\", \"The artifact must include the approved facts without contradiction.\", \"The artifact must be public text and no more than 6000 characters.\", \"All required components must be included in the all-in GEN price.\"], \"statuses\": [\"PASS\", \"PASS\", \"PASS\", \"PASS\"]}",
+              "position": 0,
+              "price": "2000000000000000000",
+              "revealed": true,
+              "review_started": 1792234951,
+              "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+              "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+              "verdict": "COMPLIANT"
+            }
+          }
+        ],
+        "credits": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+          "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0"
+        },
+        "economy": {
+          "claims": 17,
+          "contract_balance_wei": "124500000000000000000",
+          "dispatched_wei": "122500000000000000000",
+          "outstanding_wei": "124500000000000000000"
+        },
+        "nativeBalances": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "121000000000000000000",
+          "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "72750000000000000002",
+          "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "124500000000000000000"
+        }
+      },
+      "balanceSnapshots": [
+        {
+          "label": "seller-claim:before",
+          "capturedAt": "2026-10-17T11:38:50.346Z",
+          "economy": {
+            "claims": 11,
+            "contract_balance_wei": "174500000000000000000",
+            "dispatched_wei": "72500000000000000000",
+            "outstanding_wei": "174500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "13000000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "2500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "105500000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "43500000000000000002",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "174500000000000000000"
+          }
+        },
+        {
+          "label": "seller-claim:after",
+          "capturedAt": "2026-10-17T11:40:47.010Z",
+          "economy": {
+            "claims": 12,
+            "contract_balance_wei": "145250000000000000000",
+            "dispatched_wei": "101750000000000000000",
+            "outstanding_wei": "145250000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "13000000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "105500000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "72750000000000000002",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "145250000000000000000"
+          }
+        },
+        {
+          "label": "after",
+          "capturedAt": "2026-10-17T11:54:25.444Z",
+          "procurement": {
+            "bidder_count": 1,
+            "bond": "500000000000000000",
+            "budget": "5000000000000000000",
+            "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+            "commit_end": 1792233366,
+            "commit_seconds": 600,
+            "correction_seconds": 1200,
+            "deliverable": "Public artifact: Product A, Product B and Product C are described with the approved facts, every required component is included in the all-in price, and the text is bounded and public.",
+            "delivery_attempts": 1,
+            "delivery_due": 1792238821,
+            "delivery_review_end": 1792239484,
+            "delivery_review_grace_seconds": 1800,
+            "delivery_review_seconds": 1800,
+            "delivery_review_started": 0,
+            "delivery_seconds": 1800,
+            "eligibility_seconds": 1800,
+            "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+            "r2": "The artifact must include the approved facts without contradiction.",
+            "r3": "The artifact must be public text and no more than 6000 characters.",
+            "r4": "All required components must be included in the all-in GEN price.",
+            "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+            "response_due": 1792237684,
+            "response_seconds": 600,
+            "reveal_end": 1792234566,
+            "reveal_seconds": 1200,
+            "review_end": 1792236366,
+            "review_grace_seconds": 1800,
+            "status": "SETTLED",
+            "title": "Live negative timely reserved compliant review",
+            "total_seconds": 1800,
+            "winner": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+            "winning_price": "2000000000000000000"
+          },
+          "offers": [
+            {
+              "position": 0,
+              "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+              "offer": {
+                "bond": "500000000000000000",
+                "commitment": "7e55ebe9824404332d33e573287ba5ce23871eb3105bfacc8750180e5db3c23a",
+                "evidence": "{\"quotes\": [\"Deliver one bounded digital-text artifact for the negative-path verification run.\", \"The artifact must include the approved facts without contradiction.\", \"The artifact must be public text and no more than 6000 characters.\", \"All required components must be included in the all-in GEN price.\"], \"statuses\": [\"PASS\", \"PASS\", \"PASS\", \"PASS\"]}",
+                "position": 0,
+                "price": "2000000000000000000",
+                "revealed": true,
+                "review_started": 1792234951,
+                "seller": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+                "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+                "verdict": "COMPLIANT"
+              }
+            }
+          ],
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "0"
+          },
+          "economy": {
+            "claims": 17,
+            "contract_balance_wei": "124500000000000000000",
+            "dispatched_wei": "122500000000000000000",
+            "outstanding_wei": "124500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "121000000000000000000",
+            "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5": "72750000000000000002",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "124500000000000000000"
+          }
+        }
+      ],
+      "entitlements": [
+        {
+          "beneficiary": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "amountWei": "2500000000000000000",
+          "claimTransaction": "0x9a87e9b7edb9bab0bbc63c47485153379147f2d5fbb79d517ae99698e5b0fe0d",
+          "observed": "CONSUMED_IN_AGGREGATED_CLAIM",
+          "claimTransactionAmountWei": "29250000000000000000"
+        },
+        {
+          "beneficiary": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "amountWei": "3000000000000000000",
+          "claimTransaction": "0x3e6514d5036d2a5e0b26289ff21ace3d4a46962fc4c74bb19f85eb807e7b375b",
+          "claimTransactionAmountWei": "13000000000000000000",
+          "observed": "CONSUMED_IN_AGGREGATED_CLAIM"
+        }
+      ],
+      "claimReconciliation": {
+        "role": "buyer",
+        "expectedAmountWei": "3000000000000000000",
+        "aggregateTransaction": "0x3e6514d5036d2a5e0b26289ff21ace3d4a46962fc4c74bb19f85eb807e7b375b",
+        "aggregateAmountWei": "13000000000000000000",
+        "observed": "CONSUMED_IN_AGGREGATED_CLAIM",
+        "note": "The buyer credit was consumed by an explicitly verified wallet claim that aggregated multiple settled procurements. This record is not presented as a standalone claim for this auction and no second claim was submitted."
+      },
+      "claimReconciliations": [
+        {
+          "role": "seller",
+          "beneficiary": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "expectedAmountWei": "2500000000000000000",
+          "aggregateTransaction": "0x9a87e9b7edb9bab0bbc63c47485153379147f2d5fbb79d517ae99698e5b0fe0d",
+          "aggregateAmountWei": "29250000000000000000",
+          "observed": "CONSUMED_IN_AGGREGATED_CLAIM",
+          "note": "The immutable claim parent consumed a wallet-level aggregate credit. The expected scenario entitlement is recorded separately from the actual outbound message amount; no second claim was submitted."
+        }
+      ],
+      "transactions": [
+        {
+          "key": "reserved-timely-compliant:create",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "create_procurement",
+          "hash": "0x76b00a798aed35fdc315207c45c509267872b02ae95b79e2ca1852a61f1a38ac",
+          "submittedAt": "2026-10-17T10:25:13.715Z",
+          "finalizedAt": "2026-10-17T10:25:58.235Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:commit",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "commit_bid",
+          "hash": "0xaa29b0db77be7d1f1d0318b509ac71b9ebbdb16a581aebb3ef96ad2b780e2324",
+          "submittedAt": "2026-10-17T10:29:36.791Z",
+          "finalizedAt": "2026-10-17T10:36:17.527Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:reveal",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "reveal_bid",
+          "hash": "0x63b1613e2147f917d8cadf3c81c2ef658110e006792e69f6741ac9a1f94d478c",
+          "submittedAt": "2026-10-17T10:36:17.531Z",
+          "finalizedAt": "2026-10-17T10:37:12.297Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:begin-review",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "begin_bid_review",
+          "hash": "0xf42f52068456dc9a1056cc4ee0970acade9057c90b0771a977ab1a3c9c2e7e49",
+          "submittedAt": "2026-10-17T11:01:39.272Z",
+          "finalizedAt": "2026-10-17T11:02:23.716Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:evaluate-1",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "evaluate_bid",
+          "hash": "0x9344dc36bcb12a364e10cf2d704e6d97ef267f0bc0f52e3f1bf6250fc741d4e7",
+          "submittedAt": "2026-10-17T11:34:05.122Z",
+          "finalizedAt": "2026-10-17T11:35:59.270Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:award",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "finalize_award",
+          "hash": "0x44be6c6583f2ec6317372bd8bdae7772748f8c66d68c75819c9ee76f56c3fe4b",
+          "submittedAt": "2026-10-17T11:36:08.901Z",
+          "finalizedAt": "2026-10-17T11:37:01.978Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:delivery-0",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "submit_delivery",
+          "hash": "0x580da7cc04f0916fccf8655a1e3e2c1e214278c1533d1cda239659286cbb1cf4",
+          "submittedAt": "2026-10-17T11:37:11.597Z",
+          "finalizedAt": "2026-10-17T11:37:56.037Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:accept",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "accept_delivery",
+          "hash": "0x225a2f7c7b80e70eaaa56fd2f4cfb99e54fbc3265ed9d216880025ee3798b155",
+          "submittedAt": "2026-10-17T11:37:56.060Z",
+          "finalizedAt": "2026-10-17T11:38:40.706Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-timely-compliant:seller-claim",
+          "wallet": "sellerB",
+          "address": "0x275c7029516e6b1b7f56fbf970c816bfc6e793d5",
+          "method": "claim",
+          "hash": "0x9a87e9b7edb9bab0bbc63c47485153379147f2d5fbb79d517ae99698e5b0fe0d",
+          "submittedAt": "2026-10-17T11:39:45.283Z",
+          "finalizedAt": "2026-10-17T11:40:47.007Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": "0x9a87e9b7edb9bab0bbc63c47485153379147f2d5fbb79d517ae99698e5b0fe0d",
+            "messages": [
+              {
+                "messageType": "0",
+                "recipient": "0x275C7029516E6b1B7F56fBf970C816BfC6E793D5",
+                "value": 29250000000000000000,
+                "onAcceptance": false,
+                "saltNonce": null
+              }
+            ],
+            "triggeredTransactionIds": [
+              "0x753a41fc7753bae65969e1775eead16defc057cbace6509a48dbf8db25d5f9b9"
+            ]
+          },
+          "error": null
+        }
+      ],
+      "notes": [
+        {
+          "at": "2026-10-17T11:24:11.651Z",
+          "note": "Resumed after a bounded transient Studionet read outage. Persisted writes were not resubmitted; the next pass re-reads authoritative state before any new transition.",
+          "error": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+        }
+      ],
+      "errors": [
+        {
+          "at": "2026-10-17T11:19:36.464Z",
+          "message": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+        }
+      ]
+    },
+    "reserved-stale-compliant": {
+      "name": "reserved-stale-compliant",
+      "kind": "reserved-stale",
+      "auctionId": 13,
+      "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+      "participants": {
+        "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+        "wallet": "sellerC"
+      },
+      "expected": "Stale unresolved review cancels only after grace and neutral recovery settles",
+      "observed": "STALE_RESERVED_REVIEW_CANCELLED_AFTER_GRACE_NO_AWARD",
+      "status": "PASS",
+      "deadlines": {
+        "bidder_count": 0,
+        "bond": "500000000000000000",
+        "budget": "5000000000000000000",
+        "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+        "commit_end": 1792233497,
+        "commit_seconds": 600,
+        "correction_seconds": 1200,
+        "deliverable": "",
+        "delivery_attempts": 0,
+        "delivery_due": 0,
+        "delivery_review_end": 0,
+        "delivery_review_grace_seconds": 1800,
+        "delivery_review_seconds": 1800,
+        "delivery_review_started": 0,
+        "delivery_seconds": 1800,
+        "eligibility_seconds": 1800,
+        "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+        "r2": "The artifact must include the approved facts without contradiction.",
+        "r3": "The artifact must be public text and no more than 6000 characters.",
+        "r4": "All required components must be included in the all-in GEN price.",
+        "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+        "response_due": 0,
+        "response_seconds": 600,
+        "reveal_end": 1792234697,
+        "reveal_seconds": 1200,
+        "review_end": 1792236497,
+        "review_grace_seconds": 1800,
+        "status": "BIDDING",
+        "title": "Live negative stale reserved compliant review",
+        "total_seconds": 1800,
+        "winner": "",
+        "winning_price": 0
+      },
+      "before": {
+        "capturedAt": "2026-10-17T11:59:13.628Z",
+        "procurement": {
+          "bidder_count": 1,
+          "bond": "500000000000000000",
+          "budget": "5000000000000000000",
+          "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "commit_end": 1792233497,
+          "commit_seconds": 600,
+          "correction_seconds": 1200,
+          "deliverable": "",
+          "delivery_attempts": 0,
+          "delivery_due": 0,
+          "delivery_review_end": 0,
+          "delivery_review_grace_seconds": 1800,
+          "delivery_review_seconds": 1800,
+          "delivery_review_started": 0,
+          "delivery_seconds": 1800,
+          "eligibility_seconds": 1800,
+          "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+          "r2": "The artifact must include the approved facts without contradiction.",
+          "r3": "The artifact must be public text and no more than 6000 characters.",
+          "r4": "All required components must be included in the all-in GEN price.",
+          "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+          "response_due": 0,
+          "response_seconds": 600,
+          "reveal_end": 1792234697,
+          "reveal_seconds": 1200,
+          "review_end": 1792236497,
+          "review_grace_seconds": 1800,
+          "status": "BIDDING",
+          "title": "Live negative stale reserved compliant review",
+          "total_seconds": 1800,
+          "winner": "",
+          "winning_price": 0
+        },
+        "offers": [
+          {
+            "position": 0,
+            "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+            "offer": {
+              "bond": "500000000000000000",
+              "commitment": "d5d4fbdc5d9879f101eeb4b7e8b29fd6234a5e4b87652a40ee5bcfcb28c7b08a",
+              "evidence": "",
+              "position": 0,
+              "price": "2000000000000000000",
+              "revealed": true,
+              "review_started": 1792235015,
+              "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+              "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+              "verdict": "REVIEWING"
+            }
+          }
+        ],
+        "credits": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+          "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+        },
+        "economy": {
+          "claims": 17,
+          "contract_balance_wei": "124500000000000000000",
+          "dispatched_wei": "122500000000000000000",
+          "outstanding_wei": "124500000000000000000"
+        }
+      },
+      "after": {
+        "capturedAt": "2026-10-17T12:08:09.792Z",
+        "procurement": {
+          "bidder_count": 1,
+          "bond": "500000000000000000",
+          "budget": "5000000000000000000",
+          "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "commit_end": 1792233497,
+          "commit_seconds": 600,
+          "correction_seconds": 1200,
+          "deliverable": "",
+          "delivery_attempts": 0,
+          "delivery_due": 0,
+          "delivery_review_end": 0,
+          "delivery_review_grace_seconds": 1800,
+          "delivery_review_seconds": 1800,
+          "delivery_review_started": 0,
+          "delivery_seconds": 1800,
+          "eligibility_seconds": 1800,
+          "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+          "r2": "The artifact must include the approved facts without contradiction.",
+          "r3": "The artifact must be public text and no more than 6000 characters.",
+          "r4": "All required components must be included in the all-in GEN price.",
+          "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+          "response_due": 0,
+          "response_seconds": 600,
+          "reveal_end": 1792234697,
+          "reveal_seconds": 1200,
+          "review_end": 1792236497,
+          "review_grace_seconds": 1800,
+          "status": "NO_AWARD",
+          "title": "Live negative stale reserved compliant review",
+          "total_seconds": 1800,
+          "winner": "",
+          "winning_price": 0
+        },
+        "offers": [
+          {
+            "position": 0,
+            "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+            "offer": {
+              "bond": "500000000000000000",
+              "commitment": "d5d4fbdc5d9879f101eeb4b7e8b29fd6234a5e4b87652a40ee5bcfcb28c7b08a",
+              "evidence": "REVIEW_CANCELLED_AFTER_GRACE",
+              "position": 0,
+              "price": "2000000000000000000",
+              "revealed": true,
+              "review_started": 1792235015,
+              "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+              "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+              "verdict": "UNCERTAIN"
+            }
+          }
+        ],
+        "credits": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+          "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+        },
+        "economy": {
+          "claims": 19,
+          "contract_balance_wei": "119000000000000000000",
+          "dispatched_wei": "128000000000000000000",
+          "outstanding_wei": "119000000000000000000"
+        },
+        "nativeBalances": {
+          "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "126000000000000000000",
+          "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "4750000000000000000",
+          "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "119000000000000000000"
+        }
+      },
+      "balanceSnapshots": [
+        {
+          "label": "buyer-claim:before",
+          "capturedAt": "2026-10-17T12:01:19.669Z",
+          "economy": {
+            "claims": 17,
+            "contract_balance_wei": "124500000000000000000",
+            "dispatched_wei": "122500000000000000000",
+            "outstanding_wei": "124500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "5000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "121000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "4250000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "124500000000000000000"
+          }
+        },
+        {
+          "label": "buyer-claim:after",
+          "capturedAt": "2026-10-17T12:03:16.171Z",
+          "economy": {
+            "claims": 18,
+            "contract_balance_wei": "119500000000000000000",
+            "dispatched_wei": "127500000000000000000",
+            "outstanding_wei": "119500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "126000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "4250000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "119500000000000000000"
+          }
+        },
+        {
+          "label": "seller-claim:before",
+          "capturedAt": "2026-10-17T12:04:20.916Z",
+          "economy": {
+            "claims": 18,
+            "contract_balance_wei": "119500000000000000000",
+            "dispatched_wei": "127500000000000000000",
+            "outstanding_wei": "119500000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "500000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "126000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "4250000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "119500000000000000000"
+          }
+        },
+        {
+          "label": "seller-claim:after",
+          "capturedAt": "2026-10-17T12:06:26.527Z",
+          "economy": {
+            "claims": 19,
+            "contract_balance_wei": "119000000000000000000",
+            "dispatched_wei": "128000000000000000000",
+            "outstanding_wei": "119000000000000000000"
+          },
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "126000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "4750000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "119000000000000000000"
+          }
+        },
+        {
+          "label": "after",
+          "capturedAt": "2026-10-17T12:08:09.792Z",
+          "procurement": {
+            "bidder_count": 1,
+            "bond": "500000000000000000",
+            "budget": "5000000000000000000",
+            "buyer": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+            "commit_end": 1792233497,
+            "commit_seconds": 600,
+            "correction_seconds": 1200,
+            "deliverable": "",
+            "delivery_attempts": 0,
+            "delivery_due": 0,
+            "delivery_review_end": 0,
+            "delivery_review_grace_seconds": 1800,
+            "delivery_review_seconds": 1800,
+            "delivery_review_started": 0,
+            "delivery_seconds": 1800,
+            "eligibility_seconds": 1800,
+            "r1": "Deliver one bounded digital-text artifact for the negative-path verification run.",
+            "r2": "The artifact must include the approved facts without contradiction.",
+            "r3": "The artifact must be public text and no more than 6000 characters.",
+            "r4": "All required components must be included in the all-in GEN price.",
+            "reference": "Approved public facts: this is a bounded public-text verification artifact; all four frozen clauses and details are public test facts.",
+            "response_due": 0,
+            "response_seconds": 600,
+            "reveal_end": 1792234697,
+            "reveal_seconds": 1200,
+            "review_end": 1792236497,
+            "review_grace_seconds": 1800,
+            "status": "NO_AWARD",
+            "title": "Live negative stale reserved compliant review",
+            "total_seconds": 1800,
+            "winner": "",
+            "winning_price": 0
+          },
+          "offers": [
+            {
+              "position": 0,
+              "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+              "offer": {
+                "bond": "500000000000000000",
+                "commitment": "d5d4fbdc5d9879f101eeb4b7e8b29fd6234a5e4b87652a40ee5bcfcb28c7b08a",
+                "evidence": "REVIEW_CANCELLED_AFTER_GRACE",
+                "position": 0,
+                "price": "2000000000000000000",
+                "revealed": true,
+                "review_started": 1792235015,
+                "seller": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+                "terms": "Clause 1 accepted exactly: Deliver one bounded digital-text artifact for the negative-path verification run. Clause 2 accepted exactly: The artifact must include the approved facts without contradiction. Clause 3 accepted exactly: The artifact must be public text and no more than 6000 characters. Clause 4 accepted exactly: All required components must be included in the all-in GEN price.",
+                "verdict": "UNCERTAIN"
+              }
+            }
+          ],
+          "credits": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "0",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "0"
+          },
+          "economy": {
+            "claims": 19,
+            "contract_balance_wei": "119000000000000000000",
+            "dispatched_wei": "128000000000000000000",
+            "outstanding_wei": "119000000000000000000"
+          },
+          "nativeBalances": {
+            "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7": "126000000000000000000",
+            "0x2a9f27986ce895f5d5912a2833526c9b39009bbc": "4750000000000000000",
+            "0xd20fc1c6b029c4ff4e2c64e8a8e2f6b91eca161b": "119000000000000000000"
+          }
+        }
+      ],
+      "entitlements": [
+        {
+          "beneficiary": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "amountWei": "5000000000000000000",
+          "claimTransaction": "0xf529ee81e704671bfb6bdbea0c3f6699a8c55bb983bb3ed663217928bc5cac32",
+          "observed": "DISPATCHED_PENDING_EXTERNAL_SETTLEMENT"
+        },
+        {
+          "beneficiary": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "amountWei": "500000000000000000",
+          "claimTransaction": "0x7f7b58c1b87656e7d466bfd027760e517e96cba92e4f3b6604f4f9e93b33cb22",
+          "observed": "DISPATCHED_PENDING_EXTERNAL_SETTLEMENT"
+        }
+      ],
+      "claimReconciliation": null,
+      "claimReconciliations": [],
+      "transactions": [
+        {
+          "key": "reserved-stale-compliant:create",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "create_procurement",
+          "hash": "0xe4b43b50018b424482528e2fbd8ae1af143ca539c53e45573591b815fe74ed49",
+          "submittedAt": "2026-10-17T10:27:25.409Z",
+          "finalizedAt": "2026-10-17T10:28:09.954Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-stale-compliant:commit",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "commit_bid",
+          "hash": "0x6b21fb6774d269314313bd12bed1bd440626cfb3cf27fa709b1aab6cf4f0855a",
+          "submittedAt": "2026-10-17T10:29:46.386Z",
+          "finalizedAt": "2026-10-17T10:38:28.759Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-stale-compliant:reveal",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "reveal_bid",
+          "hash": "0x472acf149b64382ff60036eb3c348e65410134634aae23707d26f575db1783fe",
+          "submittedAt": "2026-10-17T10:38:28.761Z",
+          "finalizedAt": "2026-10-17T10:39:14.011Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-stale-compliant:begin-review",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "begin_bid_review",
+          "hash": "0x701edb6bda24ca6bd4441523c84291447464bf709e84e000e6f066ae33062afe",
+          "submittedAt": "2026-10-17T11:02:43.069Z",
+          "finalizedAt": "2026-10-17T11:03:27.689Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-stale-compliant:cancel",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "cancel_bid_review",
+          "hash": "0x7a436d36259d733ea8109f3d9791625d3e56a93d2466025dca746f69c76b7a65",
+          "submittedAt": "2026-10-17T11:59:23.310Z",
+          "finalizedAt": "2026-10-17T12:00:16.660Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-stale-compliant:finalize",
+          "wallet": "sellerD",
+          "address": "0xc43b93e999531b4ac0737e4e7f4ebb087422b067",
+          "method": "finalize_award",
+          "hash": "0xbfb11f2833d9ad0548ed409f1e1d15f91d230809248d6d743811f07bf37bdabd",
+          "submittedAt": "2026-10-17T12:00:16.681Z",
+          "finalizedAt": "2026-10-17T12:01:10.010Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": null,
+            "messages": [],
+            "triggeredTransactionIds": []
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-stale-compliant:buyer-claim",
+          "wallet": "buyer",
+          "address": "0x0d5540e0ad4b92aa0ad4e5f1b8cd645ee1e363e7",
+          "method": "claim",
+          "hash": "0xf529ee81e704671bfb6bdbea0c3f6699a8c55bb983bb3ed663217928bc5cac32",
+          "submittedAt": "2026-10-17T12:02:14.521Z",
+          "finalizedAt": "2026-10-17T12:03:16.167Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": "0xf529ee81e704671bfb6bdbea0c3f6699a8c55bb983bb3ed663217928bc5cac32",
+            "messages": [
+              {
+                "messageType": "0",
+                "recipient": "0x0d5540e0aD4B92Aa0ad4e5F1b8cD645ee1E363E7",
+                "value": 5000000000000000000,
+                "onAcceptance": false,
+                "saltNonce": null
+              }
+            ],
+            "triggeredTransactionIds": [
+              "0x02d938c1f2497ff90a4f4c6f8c7a1846bb25f9bafdfb745c3ede23aeb672139d"
+            ]
+          },
+          "error": null
+        },
+        {
+          "key": "reserved-stale-compliant:seller-claim",
+          "wallet": "sellerC",
+          "address": "0x2a9f27986ce895f5d5912a2833526c9b39009bbc",
+          "method": "claim",
+          "hash": "0x7f7b58c1b87656e7d466bfd027760e517e96cba92e4f3b6604f4f9e93b33cb22",
+          "submittedAt": "2026-10-17T12:05:15.870Z",
+          "finalizedAt": "2026-10-17T12:06:26.522Z",
+          "expected": "SUCCESS",
+          "observed": "SUCCESS",
+          "receipt": {
+            "status": 7,
+            "result": 6,
+            "txExecutionResultName": null,
+            "leaderExecution": "SUCCESS",
+            "chainId": 61999,
+            "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+            "transactionHash": "0x7f7b58c1b87656e7d466bfd027760e517e96cba92e4f3b6604f4f9e93b33cb22",
+            "messages": [
+              {
+                "messageType": "0",
+                "recipient": "0x2A9F27986ce895f5D5912a2833526C9b39009BBc",
+                "value": 500000000000000000,
+                "onAcceptance": false,
+                "saltNonce": null
+              }
+            ],
+            "triggeredTransactionIds": [
+              "0x942a95ef52d087487091371c057ea25b0adbe97d4ea63f09331594dffcc4b2b0"
+            ]
+          },
+          "error": null
+        }
+      ],
+      "notes": [
+        {
+          "at": "2026-10-17T11:24:11.651Z",
+          "note": "Resumed after a bounded transient Studionet read outage. Persisted writes were not resubmitted; the next pass re-reads authoritative state before any new transition.",
+          "error": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+        }
+      ],
+      "errors": [
+        {
+          "at": "2026-10-17T11:20:45.805Z",
+          "message": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+        }
+      ]
+    }
+  },
+  "errors": [
+    {
+      "scenario": "buyer-refusal-pass-compliant",
+      "at": "2026-10-17T11:01:19.970Z",
+      "message": "Error: Submission outcome unavailable for begin_delivery_review: UnknownRpcError: An unknown RPC error occurred.\n\nDetails: Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON\nVersion: viem@2.57.7"
+    },
+    {
+      "scenario": "reserved-timely-compliant",
+      "at": "2026-10-17T11:19:36.464Z",
+      "message": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+    },
+    {
+      "scenario": "delivery-default-compliant",
+      "at": "2026-10-17T11:20:11.113Z",
+      "message": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+    },
+    {
+      "scenario": "reserved-stale-compliant",
+      "at": "2026-10-17T11:20:45.805Z",
+      "message": "UnknownRpcError: An unknown RPC error occurred.\n\nDetails: fetch failed\nVersion: viem@2.57.7"
+    }
+  ]
+}

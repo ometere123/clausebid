@@ -17,5 +17,6 @@ evidence/session.local.json
 evidence/session.*.local.json
 evidence/live-negative.local.json
 evidence/live-negative-configurable.local.json
+evidence/live-negative-configurable-batch*.local.json
 .vercel
 .env*

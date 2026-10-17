@@ -72,6 +72,7 @@ const bids=[
  {price:22n,terms:'Three descriptions and warranties for 22 GEN, but SEO titles require an additional 5 GEN.'},
  {price:28n,terms:'Exactly three complete descriptions, six-month warranty text and SEO titles all included for 28 GEN all-in, no extra fees.'},
 ];
+const sleep=(ms)=>new Promise(resolve=>setTimeout(resolve,ms));
 function packed(parts){return Buffer.concat(parts.map(v=>{const b=Buffer.from(String(v),'utf8');return Buffer.concat([Buffer.from(String(b.length)+':'),b])}))}
 function commitment(auction,seller,price,terms,salt){
  const domain=['clausebid/commit/v1','61999',DOMAIN_ADDRESS,String(auction),seller.toLowerCase(),String(price),terms,salt];
@@ -97,6 +98,71 @@ async function send(who,method,args=[],value,wait=true){
  if(!ok)throw Error('Finalized but failed. Inspect hash and state BEFORE retry: '+hash);
  console.log('Finalized execution success:',hash);
  return hash;
+}
+async function revealAll(){
+ const pending=[];
+ for(let n=0;n<4;n++){
+  const o=state.reveal[wallets[n+1].address.toLowerCase()];
+  if(!o)throw Error('Missing original saved commitment for seller '+(n+1));
+  pending.push(send(n+1,'reveal_bid',[id(),BigInt(o.price),o.terms,o.salt],undefined,false));
+ }
+ await Promise.all(pending);
+}
+async function waitForRevealOpening(){
+ const row=await read('get_procurement',[id()]);
+ const opening=Number(row.commit_end);
+ const closing=Number(row.reveal_end);
+ const now=Math.floor(Date.now()/1000);
+ if(now>=closing)throw Error('Reveal window has already closed; refusing a late reveal submission');
+ if(now<opening){
+  console.log('Waiting for on-chain reveal opening:',new Date(opening*1000).toISOString());
+  while(Math.floor(Date.now()/1000)<opening){
+   const remaining=Math.max(1,opening-Math.floor(Date.now()/1000));
+   console.log('Reveal opens in',remaining,'seconds');
+   await sleep(Math.min(30000,remaining*1000));
+  }
+ }
+ // Leave a small positive margin after the opening boundary so the parent
+ // transaction is not rejected as an early reveal by the hosted executor.
+ await sleep(1500);
+ if(Math.floor(Date.now()/1000)>=closing)throw Error('Reveal window closed while waiting for opening');
+ await revealAll();
+}
+async function evaluateAll(){
+ const a=await read('get_procurement',[id()]);
+ const jobs=[];
+ for(let n=0;n<Number(a.bidder_count);n++){
+  const seller=await read('get_seller',[id(),n]);
+  const o=await read('get_offer',[id(),seller]);
+  if(o.revealed&&o.verdict==='REVEALED')jobs.push({who:n+1<5?n+1:0,seller});
+ }
+ // A review reservation must be finalized before its consensus call is
+ // submitted; otherwise independent transactions can be reordered and the
+ // evaluator may execute against the pre-reservation state. Keep the writes
+ // sequential for one auction: Studio can finalize concurrent reservations
+ // against stale BIDDING snapshots and return finalized execution failures.
+ for(const x of jobs)await send(x.who,'begin_bid_review',[id(),x.seller]);
+ for(const x of jobs){
+  await send(x.who,'evaluate_bid',[id(),x.seller]);
+  const observed=await read('get_offer',[id(),x.seller]);
+  if(observed.verdict==='REVIEWING')throw Error('Finalized semantic evaluation receipt did not yet appear in authoritative offer state; inspect before continuing '+x.seller);
+ }
+}
+async function waitForReviewOpening(){
+ const row=await read('get_procurement',[id()]);
+ const opening=Number(row.reveal_end);
+ const now=Math.floor(Date.now()/1000);
+ if(now>=Number(row.review_end))throw Error('Eligibility review cutoff already passed; inspect before submitting reviews');
+ if(now<opening){
+  console.log('Waiting for on-chain review opening:',new Date(opening*1000).toISOString());
+  while(Math.floor(Date.now()/1000)<opening){
+   const remaining=Math.max(1,opening-Math.floor(Date.now()/1000));
+   console.log('Review opens in',remaining,'seconds');
+   await sleep(Math.min(30000,remaining*1000));
+  }
+ }
+ await sleep(1500);
+ await evaluateAll();
 }
 const cmd=process.argv[2]||'help';
 if(cmd==='attach'){
@@ -130,28 +196,13 @@ if(cmd==='attach'){
  await Promise.all(pending);
  console.log('All four commitments submitted. KEEP evidence/session.local.json SECRET until reveal.');
 }else if(cmd==='reveal-all'){
- const pending=[];
- for(let n=0;n<4;n++){
-  const o=state.reveal[wallets[n+1].address.toLowerCase()];
-  if(!o)throw Error('Missing original saved commitment for seller '+(n+1));
-  pending.push(send(n+1,'reveal_bid',[id(),BigInt(o.price),o.terms,o.salt],undefined,false));
- }
- await Promise.all(pending);
+ await revealAll();
+}else if(cmd==='wait-reveal'){
+ await waitForRevealOpening();
+}else if(cmd==='wait-review'){
+ await waitForReviewOpening();
 }else if(cmd==='evaluate-all'){
- const a=await read('get_procurement',[id()]);
- const jobs=[];
- for(let n=0;n<Number(a.bidder_count);n++){
-  const seller=await read('get_seller',[id(),n]);
-  const o=await read('get_offer',[id(),seller]);
-  if(o.revealed&&o.verdict==='REVEALED')jobs.push({who:n+1<5?n+1:0,seller});
- }
- // A review reservation must be finalized before its consensus call is
- // submitted; otherwise independent transactions can be reordered and the
- // evaluator may execute against the pre-reservation state. Keep the writes
- // sequential for one auction: Studio can finalize concurrent reservations
- // against stale BIDDING snapshots and return finalized execution failures.
- for(const x of jobs)await send(x.who,'begin_bid_review',[id(),x.seller]);
- for(const x of jobs)await send(x.who,'evaluate_bid',[id(),x.seller]);
+ await evaluateAll();
 }else if(cmd==='retry-evaluate'){
  const a=await read('get_procurement',[id()]);
  const pending=[];
@@ -161,17 +212,51 @@ if(cmd==='attach'){
   if(o.verdict==='REVIEWING')pending.push(seller);
  }
  if(!pending.length)throw Error('No reserved unresolved bid review; do not retry an already resolved evaluation');
+ const consensusFailure=(entry)=>{
+  if(entry?.method!=='evaluate_bid'||entry?.state!=='finalized-failed'||typeof entry.result!=='string')return false;
+  // send() intentionally keeps a bounded receipt excerpt, so it may not be
+  // complete JSON once consensus diagnostics are attached. Match only the
+  // authoritative top-level status/result pair and never treat a submission
+  // error or contract revert as retryable.
+  return /"status"\s*:\s*7\s*,\s*"result"\s*:\s*7/.test(entry.result);
+ };
+ const failures=[];
  for(const seller of pending){
   const current=await read('get_offer',[id(),seller]);
   if(current.verdict!=='REVIEWING')continue;
-  await send(1,'evaluate_bid',[id(),seller]);
+  try{
+   await send(1,'evaluate_bid',[id(),seller]);
+   const observed=await read('get_offer',[id(),seller]);
+   if(observed.verdict==='REVIEWING')throw Error('Finalized semantic evaluation receipt did not yet appear in authoritative offer state; inspect before retrying '+seller);
+  }
+  catch(error){
+   const entry=state.history.at(-1);
+   if(!consensusFailure(entry))throw error;
+   failures.push({seller,hash:entry.hash,reason:'FINALIZED_CONSENSUS_DISAGREEMENT'});
+   console.log('Reserved review disagreed without a state transition; continuing to the next reserved offer:',entry.hash);
+  }
  }
+ if(failures.length)console.log('Semantic review retry summary:',JSON.stringify(failures));
 }else if(cmd==='award'){
  await send(0,'finalize_award',[id()]);
 }else if(cmd==='award-as'){
  const who=Number(process.env.CLAUSEBID_CALLER_INDEX??4);
  if(!Number.isInteger(who)||who<0||who>4)throw Error('CLAUSEBID_CALLER_INDEX must be 0..4');
  await send(who,'finalize_award',[id()]);
+}else if(cmd==='cancel-bid-review'){
+ const a=await read('get_procurement',[id()]);
+ let seller=process.env.CLAUSEBID_REVIEW_SELLER?.toLowerCase();
+ if(!seller){
+  for(let n=0;n<Number(a.bidder_count);n++){
+   const candidate=await read('get_seller',[id(),n]);
+   const offer=await read('get_offer',[id(),candidate]);
+   if(offer.verdict==='REVIEWING'){seller=String(candidate).toLowerCase();break}
+  }
+ }
+ if(!seller)throw Error('No unresolved reserved bid review to cancel');
+ const who=Number(process.env.CLAUSEBID_CALLER_INDEX??0);
+ if(!Number.isInteger(who)||who<0||who>4)throw Error('CLAUSEBID_CALLER_INDEX must be 0..4');
+ await send(who,'cancel_bid_review',[id(),seller]);
 }else if(cmd==='deliver'){
  const a=await read('get_procurement',[id()]);
  const idx=wallets.findIndex(x=>x.address.toLowerCase()===String(a.winner).toLowerCase());
@@ -180,6 +265,7 @@ if(cmd==='attach'){
  'PRODUCT A — SEO TITLE: Product A customer guide. Full description: Product A has a six-month warranty and the approved product facts.',
  'PRODUCT B — SEO TITLE: Product B customer guide. Full description: Product B has a six-month warranty and the approved product facts.',
  'PRODUCT C — SEO TITLE: Product C customer guide. Full description: Product C has a six-month warranty and the approved product facts.',
+ 'All required components are included in the quoted all-in GEN price.',
  ].join('\n\n');
  await send(idx,'submit_delivery',[id(),text]);
 }else if(cmd==='deliver-defect'){
@@ -250,6 +336,6 @@ if(cmd==='attach'){
  console.log('Economy',safe(await read('get_economy')));
  console.log('Recorded writes',state.history.length);
 }else{
- console.log('Commands: attach, create, commit-all, reveal-all, evaluate-all, retry-evaluate, verify-pending, award, award-as, deliver, deliver-defect, dispute, review, retry-delivery-review, accept, expire, claim-all, duplicate-claim, snapshot, overview, inspect');
+ console.log('Commands: attach, create, commit-all, reveal-all, evaluate-all, retry-evaluate, verify-pending, award, award-as, cancel-bid-review, deliver, deliver-defect, dispute, review, retry-delivery-review, accept, expire, claim-all, duplicate-claim, snapshot, overview, inspect');
  console.log('Use real wall-clock windows, NEVER warp hosted Studionet. No command changes network time.');
 }

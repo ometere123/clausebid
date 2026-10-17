@@ -27,6 +27,7 @@ jobs:
         run: |
           node --check scripts/drive.mjs
           node --check scripts/live-negative.mjs
+          node --check scripts/archive-configurable.mjs
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund

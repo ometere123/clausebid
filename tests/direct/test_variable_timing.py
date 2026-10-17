@@ -1,5 +1,7 @@
 """Direct Mode proof for immutable buyer-selected procurement schedules."""
 
+import json
+
 import pytest
 
 
@@ -50,6 +52,31 @@ def _create_on_contract(vm, contract, buyer, commit_seconds, reveal_seconds, bud
     )
     vm.value = 0
     return int(auction_id)
+
+
+def _commit_and_reveal(vm, contract, auction_id, seller, price=4 * GEN, salt="a" * 64):
+    terms = "All four requirements are fulfilled in the all-in offer."
+    digest = contract._hash(auction_id, _addr(seller), price, terms, salt)
+    vm.sender = seller
+    vm.value = int(contract.get_procurement(auction_id).bond)
+    contract.commit_bid(auction_id, digest)
+    vm.value = 0
+    return terms, salt, price
+
+
+def _reveal(vm, contract, auction_id, seller, price, terms, salt):
+    vm.sender = seller
+    contract.reveal_bid(auction_id, price, terms, salt)
+
+
+def _pass_review(vm, contract, auction_id, seller):
+    vm.clear_mocks()
+    vm.mock_llm(
+        r".*independently applying an immutable procurement rulebook.*",
+        json.dumps({"statuses": ["PASS"] * 4, "quotes": [""] * 4}),
+    )
+    contract.begin_bid_review(auction_id, _addr(seller))
+    assert contract.evaluate_bid(auction_id, _addr(seller)) == "COMPLIANT"
 
 
 def test_minimum_schedule_reproduces_accelerated_policy(direct_vm, direct_deploy, direct_alice):
@@ -180,3 +207,55 @@ def test_deadline_overflow_is_rejected(direct_vm, direct_deploy, direct_alice):
     contract, _ = _create(direct_vm, direct_deploy, direct_alice, 600, 1200)
     with direct_vm.expect_revert("deadline overflow"):
         contract._deadline(2**64 - 1, 1)
+
+
+def test_default_schedule_uses_real_phase_boundaries(direct_vm, direct_deploy, direct_alice, direct_bob):
+    contract, auction_id = _create(direct_vm, direct_deploy, direct_alice, 86400, 172800)
+    terms, salt, price = _commit_and_reveal(direct_vm, contract, auction_id, direct_bob)
+    direct_vm.warp("2026-01-01T23:59:59Z")
+    with direct_vm.expect_revert("reveal phase closed"):
+        _reveal(direct_vm, contract, auction_id, direct_bob, price, terms, salt)
+    direct_vm.warp("2026-01-02T00:00:00Z")
+    _reveal(direct_vm, contract, auction_id, direct_bob, price, terms, salt)
+    direct_vm.warp("2026-01-03T23:59:59Z")
+    with direct_vm.expect_revert("review phase closed"):
+        contract.begin_bid_review(auction_id, _addr(direct_bob))
+    direct_vm.warp("2026-01-04T00:00:01Z")
+    contract.begin_bid_review(auction_id, _addr(direct_bob))
+
+
+def test_selected_deadlines_anchor_to_award_delivery_and_correction_starts(
+    direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie
+):
+    contract, auction_id = _create(direct_vm, direct_deploy, direct_alice, 3600, 7200)
+    terms, salt, price = _commit_and_reveal(direct_vm, contract, auction_id, direct_bob)
+    direct_vm.warp("2026-01-01T01:00:01Z")
+    _reveal(direct_vm, contract, auction_id, direct_bob, price, terms, salt)
+    direct_vm.warp("2026-01-01T03:00:01Z")
+    _pass_review(direct_vm, contract, auction_id, direct_bob)
+    award_at = 1767236401  # 2026-01-01T03:00:01Z
+    contract.finalize_award(auction_id)
+    row = contract.get_procurement(auction_id)
+    assert int(row.delivery_due) == award_at + 10800
+
+    direct_vm.warp("2026-01-01T03:10:01Z")
+    direct_vm.sender = direct_bob
+    contract.submit_delivery(auction_id, "A defective first delivery")
+    row = contract.get_procurement(auction_id)
+    submission_at = 1767237001  # 2026-01-01T03:10:01Z
+    assert int(row.response_due) == submission_at + 3600
+    assert int(row.delivery_review_end) == submission_at + 3600 + 10800
+
+    direct_vm.sender = direct_alice
+    contract.dispute_delivery(auction_id)
+    direct_vm.sender = direct_charlie
+    contract.begin_delivery_review(auction_id)
+    direct_vm.clear_mocks()
+    direct_vm.mock_llm(
+        r".*independently applying an immutable procurement rulebook.*",
+        json.dumps({"statuses": ["FAIL", "PASS", "PASS", "PASS"], "quotes": ["", "", "", ""]}),
+    )
+    reviewed_at = 1767237001
+    assert contract.review_delivery(auction_id) == "CORRECTION"
+    row = contract.get_procurement(auction_id)
+    assert int(row.delivery_due) == reviewed_at + 7200

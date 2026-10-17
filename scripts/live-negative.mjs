@@ -203,7 +203,7 @@ function publicEvidence(){
  for(const [name,item] of Object.entries(state.scenarios)){
   output.scenarios[name]={name,kind:item.kind,auctionId:item.auctionId??null,buyer:item.buyer??null,participants:item.participants??null,
    expected:item.expected,observed:item.observed??null,status:item.status??'IN_PROGRESS',deadlines:item.deadlines??null,
-   before:item.before??null,after:item.after??null,balanceSnapshots:item.balanceSnapshots??[],entitlements:item.entitlements??[],
+   before:item.before??null,after:item.after??null,balanceSnapshots:item.balanceSnapshots??[],entitlements:item.entitlements??[],claimReconciliation:item.claimReconciliation??null,claimReconciliations:item.claimReconciliations??[],
    transactions:Object.values(item.transactionKeys??{}).map(key=>publicTx(state.transactions[key])).filter(Boolean),
    notes:item.notes??[],errors:item.errors??[]};
  }
@@ -273,7 +273,17 @@ async function claim(item,who,label){
  const before=await economySnapshot(item,true,[addresses[who]]);item.balanceSnapshots.push({label:label+':before',...before});persist();
  const result=await tx(item,label,who,'claim',[],0n,'SUCCESS');
  const after=await economySnapshot(item,true,[addresses[who]]);item.balanceSnapshots.push({label:label+':after',...after});
- item.entitlements.push({beneficiary:addresses[who],amountWei:String(due),claimTransaction:result.hash,observed:'DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'});persist();return result;
+ const messages=Array.isArray(result.receipt?.messages)?result.receipt.messages:[];
+ const message=messages.find(value=>String(value?.recipient??'').toLowerCase()===addresses[who]);
+ const actual=message?.value===undefined?null:BigInt(String(message.value));
+ const aggregated=actual!==null&&actual!==due;
+ const entitlement={beneficiary:addresses[who],amountWei:String(due),claimTransaction:result.hash,claimTransactionAmountWei:actual===null?null:String(actual),observed:aggregated?'CONSUMED_IN_AGGREGATED_CLAIM':'DISPATCHED_PENDING_EXTERNAL_SETTLEMENT'};
+ item.entitlements.push(entitlement);
+ if(aggregated){
+  item.claimReconciliations=item.claimReconciliations??[];
+  item.claimReconciliations.push({beneficiary:addresses[who],expectedAmountWei:String(due),aggregateTransaction:result.hash,aggregateAmountWei:String(actual),observed:'CONSUMED_IN_AGGREGATED_CLAIM',note:'The wallet claim consumed an aggregate credit larger than this scenario entitlement. The immutable parent/message amount is preserved and no second claim is submitted.'});
+ }
+ persist();return result;
 }
 async function createAuction(item){
  if(item.auctionId)return;
@@ -323,7 +333,12 @@ async function ensureReview(item){
   const result=await tx(item,'begin-review',item.commit.who,'begin_bid_review',[item.auctionId,item.commit.seller],0n,'SUCCESS');item.reviewReservation=result.hash;persist();
  }
 }
-const isConsensusDisagreement=(entry)=>entry?.observed==='FAILURE'&&Number(entry?.receipt?.status)===7&&Number(entry?.receipt?.result)===7&&String(entry?.receipt?.leaderExecution??'').toUpperCase()==='SUCCESS';
+// A finalized result=7 means the reserved semantic decision did not produce a
+// state transition. It is safe to retry that decision once the provider is
+// available, whether the leader reported MAJORITY_DISAGREE or ERROR. This
+// predicate is never used for claims, transfers, deposits or other financial
+// writes.
+const isConsensusDisagreement=(entry)=>entry?.observed==='FAILURE'&&Number(entry?.receipt?.status)===7&&Number(entry?.receipt?.result)===7;
 const lastMethodTransaction=(item,method)=>Object.values(item.transactionKeys??{}).map(key=>state.transactions[key]).filter(entry=>entry?.method===method).at(-1);
 async function evaluate(item){
  const attempt=(item.evaluationAttempts??0)+1;if(attempt>6)throw Error('Bid review did not reach agreement after six finalized attempts');
@@ -447,6 +462,7 @@ async function progressUncertain(item){
  }
  if(item.fallback&&!item.cleanup&&deadlinePassed(await read('get_procurement',[item.auctionId]),'delivery_due')){await expire(item);item.cleanup=true}
  if(item.unwound&&!item.buyerClaim){const result=await claim(item,0,'buyer-claim');item.buyerClaim=result?.hash??null;persist()}
+ if(item.cleanup&&item.fallback&&!item.buyerClaim){const result=await claim(item,0,'fallback-buyer-claim');item.buyerClaim=result?.hash??null;persist()}
  if(item.unwound&&!item.sellerClaim){const result=await claim(item,item.commit.who,'seller-claim');item.sellerClaim=result?.hash??null;persist()}
  if(item.buyerClaim&&item.sellerClaim)await setTerminal(item,'PASS','UNCERTAIN_DELIVERY_NEUTRAL_UNWIND');
  if(item.cleanup&&item.fallback)await setTerminal(item,'BLOCKED','LIVE_PROVIDER_DID_NOT_RETURN_UNKNOWN_NEUTRAL_UNWIND');
@@ -475,6 +491,57 @@ async function progressReservedStale(item){
  if(item.finalize&&!item.buyerClaim){const result=await claim(item,0,'buyer-claim');item.buyerClaim=result?.hash??null;persist()}
  if(item.buyerClaim&&!item.sellerClaim){const result=await claim(item,item.commit.who,'seller-claim');item.sellerClaim=result?.hash??null;persist()}
  if(item.buyerClaim&&item.sellerClaim)await setTerminal(item,'PASS','STALE_RESERVED_REVIEW_CANCELLED_AFTER_GRACE_NO_AWARD');
+}
+async function reconcileAggregatedBuyerClaim(){
+ const name=process.env.CLAUSEBID_SCENARIO;
+ const hash=process.env.CLAUSEBID_AGGREGATE_CLAIM_HASH?.trim();
+ if(!name||!hash)throw Error('Set CLAUSEBID_SCENARIO and CLAUSEBID_AGGREGATE_CLAIM_HASH');
+ const item=scenario(name);
+ if(item.kind!=='reserved-timely'||!item.accept||!item.sellerClaim)throw Error('Scenario is not the settled reserved-timely case awaiting buyer claim reconciliation');
+ const row=await read('get_procurement',[item.auctionId]);
+ if(row.status!=='SETTLED')throw Error('Aggregate claim reconciliation requires an authoritative SETTLED procurement');
+ const expected=BigInt(row.budget)-BigInt(row.winning_price);
+ const details=await transactionDetails(hash,false,true);
+ if(!hasSuccess(details.receipt))throw Error('Aggregate claim parent is not finalized with successful execution');
+ const messages=Array.isArray(details.transaction?.messages)?details.transaction.messages:[];
+ const matching=messages.find(message=>String(message?.recipient??message?.to??'').toLowerCase()===String(row.buyer).toLowerCase());
+ if(!matching)throw Error('Aggregate claim parent has no matching buyer outbound message');
+ const aggregateAmount=BigInt(String(matching.value??matching.valueWei??'0'));
+ if(aggregateAmount<expected)throw Error('Aggregate buyer claim is smaller than this procurement entitlement');
+ item.buyerClaim=hash;
+ item.claimReconciliation={role:'buyer',expectedAmountWei:String(expected),aggregateTransaction:hash,aggregateAmountWei:String(aggregateAmount),observed:'CONSUMED_IN_AGGREGATED_CLAIM',note:'The buyer credit was consumed by an explicitly verified wallet claim that aggregated multiple settled procurements. This record is not presented as a standalone claim for this auction and no second claim was submitted.'};
+ item.claimReconciliations=item.claimReconciliations??[];
+ item.claimReconciliations.push(item.claimReconciliation);
+ item.entitlements.push({beneficiary:row.buyer,amountWei:String(expected),claimTransaction:hash,claimTransactionAmountWei:String(aggregateAmount),observed:'CONSUMED_IN_AGGREGATED_CLAIM'});
+ await setTerminal(item,'PASS','TIMELY_RESERVED_REVIEW_FINALIZED_AFTER_ORDINARY_DEADLINE_AGGREGATED_CLAIM');
+}
+async function reconcileAggregatedClaim(){
+ const name=process.env.CLAUSEBID_SCENARIO;
+ const hash=process.env.CLAUSEBID_AGGREGATE_CLAIM_HASH?.trim();
+ const role=process.env.CLAUSEBID_CLAIM_ROLE?.trim();
+ if(!name||!hash||!['buyer','seller'].includes(role))throw Error('Set CLAUSEBID_SCENARIO, CLAUSEBID_CLAIM_ROLE=buyer|seller and CLAUSEBID_AGGREGATE_CLAIM_HASH');
+ const item=scenario(name);const row=await read('get_procurement',[item.auctionId]);
+ if(!['SETTLED','DEFAULTED','UNWOUND','NO_AWARD'].includes(String(row.status)))throw Error('Aggregate claim reconciliation requires a terminal procurement');
+ const beneficiary=role==='buyer'?String(row.buyer).toLowerCase():String(row.winner).toLowerCase();
+ let expected=0n;
+ if(String(row.status)==='SETTLED')expected=role==='buyer'?BigInt(row.budget)-BigInt(row.winning_price):BigInt(row.winning_price)+BigInt(row.bond);
+ else if(String(row.status)==='DEFAULTED')expected=role==='buyer'?BigInt(row.winning_price)+BigInt(row.bond):0n;
+ else if(String(row.status)==='UNWOUND')expected=role==='buyer'?BigInt(row.winning_price):BigInt(row.bond);
+ else expected=role==='buyer'?BigInt(row.budget):BigInt(row.bond);
+ if(expected<=0n)throw Error('No positive entitlement is expected for this role');
+ const details=await transactionDetails(hash,false,true);
+ if(!hasSuccess(details.receipt))throw Error('Aggregate claim parent is not finalized with successful execution');
+ const message=(Array.isArray(details.transaction?.messages)?details.transaction.messages:[]).find(value=>String(value?.recipient??value?.to??'').toLowerCase()===beneficiary);
+ if(!message)throw Error('Aggregate claim parent has no matching beneficiary message');
+ const actual=BigInt(String(message.value??message.valueWei??'0'));
+ if(actual<=expected)throw Error('Claim parent is not larger than the scenario entitlement; use the ordinary claim evidence');
+ const existing=item.entitlements?.find(entry=>entry.claimTransaction===hash);
+ if(existing){existing.amountWei=String(expected);existing.claimTransactionAmountWei=String(actual);existing.observed='CONSUMED_IN_AGGREGATED_CLAIM'}
+ else item.entitlements.push({beneficiary,amountWei:String(expected),claimTransaction:hash,claimTransactionAmountWei:String(actual),observed:'CONSUMED_IN_AGGREGATED_CLAIM'});
+ item.claimReconciliations=item.claimReconciliations??[];
+ item.claimReconciliations.push({role,beneficiary,expectedAmountWei:String(expected),aggregateTransaction:hash,aggregateAmountWei:String(actual),observed:'CONSUMED_IN_AGGREGATED_CLAIM',note:'The immutable claim parent consumed a wallet-level aggregate credit. The expected scenario entitlement is recorded separately from the actual outbound message amount; no second claim was submitted.'});
+ if(role==='buyer')item.buyerClaim=hash;else item.sellerClaim=hash;
+ persist();
 }
 async function recoverMissedReview(item){
  if(item.cleanup||item.reviewReservation||!['correction-default','uncertain'].includes(item.kind)||item.status!=='BLOCKED')return;
@@ -521,7 +588,49 @@ function reviveConsensusDisagreements(){
    item.status='IN_PROGRESS';item.evaluationAttempts=1;item.nextRetryAt=Math.floor(Date.now()/1000);item.notes.push({at:nowIso(),note:'Resumed after a recorded MAJORITY_DISAGREE bid review; no economic transition occurred.'});changed=true;
   }else if(!item.lastDeliveryDecision&&item.deliveryReviewReservation&&isConsensusDisagreement(deliveryFailure)){
    item.status='IN_PROGRESS';item.deliveryReviewAttempts=1;item.nextRetryAt=Math.floor(Date.now()/1000);item.notes.push({at:nowIso(),note:'Resumed after a recorded MAJORITY_DISAGREE delivery review; no economic transition occurred.'});changed=true;
+  }else if(item.status==='BLOCKED'&&item.cleanup&&item.fallback&&!item.buyerClaim){
+   item.status='IN_PROGRESS';item.nextRetryAt=0;item.notes.push({at:nowIso(),note:'Resumed only to consume the buyer recovery entitlement created by the defined fallback default; no transfer is retried.'});changed=true;
   }
+ }
+ if(changed)persist();
+}
+function revivePreflightSubmissionErrors(){
+ const retryableMethods=new Set(['begin_bid_review','evaluate_bid','begin_delivery_review','review_delivery']);
+ let changed=false;
+ for(const item of Object.values(state.scenarios)){
+  for(const [key,transactionKey] of Object.entries(item.transactionKeys??{})){
+   const entry=state.transactions[transactionKey];
+   const error=String(entry?.error??'');
+   if(entry?.observed!=='SUBMISSION_ERROR'||entry.hash||!retryableMethods.has(entry.method)||
+      !/eth_getTransactionCount|eth_chainId|eth_estimateGas|Unexpected token '<'|Failed to fetch|fetch failed/i.test(error))continue;
+   delete state.transactions[transactionKey];delete item.transactionKeys[key];
+   item.notes.push({at:nowIso(),note:'Resuming a non-financial review write whose wallet preflight failed before a transaction hash was returned; no financial write or outbound transfer is retried.',method:entry.method,error:error.slice(0,180)});
+   if(item.status==='BLOCKED')item.status='IN_PROGRESS';
+   changed=true;
+  }
+ }
+ if(changed)persist();
+}
+function reviveTransientReadFailures(){
+ let changed=false;
+ const transientRead=/fetch failed|failed to fetch|rate limit|too many requests|\b429\b|\b502\b|\b503\b|\b504\b|Unexpected token '<'/i;
+ const reviewMethods=new Set(['begin_bid_review','evaluate_bid','begin_delivery_review','review_delivery']);
+ for(const item of Object.values(state.scenarios)){
+  if(item.status!=='BLOCKED')continue;
+  const lastError=item.errors?.at(-1)?.message??'';
+  if(!transientRead.test(String(lastError)))continue;
+  // A scenario may resume after a read outage only when every persisted write
+  // has a transaction hash or is one of the non-financial review preflights
+  // handled above. Never revive a hashless deposit, claim, entitlement,
+  // delivery, award, expiry or other economic write.
+  const unsafe=Object.values(item.transactionKeys??{}).some(transactionKey=>{
+   const entry=state.transactions[transactionKey];
+   return entry?.observed==='SUBMISSION_ERROR'&&!reviewMethods.has(entry.method);
+  });
+  if(unsafe)continue;
+  item.status='IN_PROGRESS';
+  item.notes.push({at:nowIso(),note:'Resumed after a bounded transient Studionet read outage. Persisted writes were not resubmitted; the next pass re-reads authoritative state before any new transition.',error:String(lastError).slice(0,180)});
+  changed=true;
  }
  if(changed)persist();
 }
@@ -614,6 +723,8 @@ function nextWakeSeconds(item){
 }
 async function run(){
  if(!state.startedAt||selectedSpecs.some(spec=>!state.scenarios[spec.name]))await start();
+ revivePreflightSubmissionErrors();
+ reviveTransientReadFailures();
  reviveConsensusDisagreements();
  for(const item of Object.values(state.scenarios)){
   try{await recoverMissedReview(item)}catch(error){recordError(item,String(error));console.log('RECOVERY BLOCKED',item.name,String(error))}
@@ -651,4 +762,6 @@ const command=process.argv[2]??'status';
 if(command==='start')await start();
 else if(command==='run'||command==='resume')await run();
 else if(command==='status')await status();
-else throw Error('Use start, run, resume, or status');
+else if(command==='reconcile-aggregate')await reconcileAggregatedBuyerClaim();
+else if(command==='reconcile-aggregate-claim')await reconcileAggregatedClaim();
+else throw Error('Use start, run, resume, status, reconcile-aggregate, or reconcile-aggregate-claim');

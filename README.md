@@ -61,33 +61,64 @@ ignored `evidence/live-negative.local.json`; the publishable summaries are
 written to `evidence/studionet/live-negative.json`.
 
 ```powershell
-$env:CLAUSEBID_CONTRACT_ADDRESS='0x24f95ED58fcfa4e339C504fF388A922347757515'
+$env:CLAUSEBID_CONTRACT_ADDRESS='0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b'
 $env:CLAUSEBID_KEYSTORE_PASSWORD='set only in this shell'
 node scripts/live-negative.mjs start
 node scripts/live-negative.mjs resume
 node scripts/live-negative.mjs status
 ```
 
+For a timing-critical minimum-duration run, queue commitments first and let the
+driver wait for the actual on-chain reveal opening before submitting the saved
+packages. This waits for the opening boundary and never retries a finalized
+failure:
+
+```powershell
+$env:CLAUSEBID_SESSION_FILE='evidence/session.configurable.min3.local.json'
+node scripts/drive.mjs wait-reveal
+node scripts/drive.mjs verify-pending
+```
+
 `resume` is safe to run after interruption. It records finalized parent
 receipts, successful or failed execution, state snapshots, entitlement values,
 and pre/post native-balance reads. Reads are serialized with bounded spacing;
-only transient reads may retry, and an in-flight or hashless write is preserved
-as `SUBMISSION_ERROR` instead of being resubmitted. It never retries an
-ambiguous claim or outbound value transfer. The runner's hosted results are
-automated multi-wallet Studionet integration testing, not Direct Mode or mocked
-consensus evidence. Its finite scenarios include no-award refund, unrevealed
-bonds, delivery recovery, buyer refusal, correction exhaustion, neutral
-unwind, timely reserved reviews and stale review cancellation.
+only transient reads may retry. A hashless preflight failure is preserved as
+`SUBMISSION_ERROR`; the resumable runner may remove and retry only that
+non-financial review preflight after inspecting its error class. It never
+retries an ambiguous claim, deposit, entitlement or outbound value transfer.
+The runner's hosted results are automated multi-wallet Studionet integration
+testing, not Direct Mode or mocked consensus evidence. The current configurable
+deployment has PASS archives for no-award refund, unrevealed-bond forfeiture,
+delivery recovery, buyer refusal followed by independent PASS, correction
+exhaustion, timely reserved review protection and stale review cancellation.
+The uncertain-delivery archive remains explicitly `BLOCKED`: three finalized
+delivery-review attempts did not return an `UNKNOWN` consensus, so the runner
+did not mislabel the fallback default as a neutral unwind.
 
-The current replacement-deployment archive contains PASS runs for no-compliant
-refund, delivery default recovery, buyer refusal followed by independent PASS,
-timely reserved review after cutoff, and stale reserved-review cancellation.
-Two bounded follow-up correction/uncertain attempts reached finalized reveal
-transactions with `leaderExecution: ERROR`; they were not retried, and their
-no-award recovery is recorded as blocked provider evidence rather than a claim
-that the intended delivery paths succeeded. See
-`evidence/studionet/live-negative.json` and the evidence matrix for the exact
-hashes and balance snapshots.
+The previous replacement deployment remains historical evidence. New hosted
+results for the configurable deployment are kept separately under
+`evidence/studionet/live-demo-configurable.json` and
+`evidence/studionet/live-negative-configurable-*.json`, so a receipt from an
+older address cannot be attributed to the current contract. A scenario is
+reported as PASS only when its finalized parent execution, state transition,
+liability accounting and required recipient readbacks are present; provider
+errors and unresolved consensus remain explicitly BLOCKED. The current
+minimum-duration auction 9 is finalized as `SETTLED` and its deployment-scoped
+archive has 19 unique claim-parent mappings, 128 GEN dispatched, 119 GEN
+outstanding and a matching 119 GEN contract balance. Because credits are keyed
+by wallet, a valid claim may consume multiple settled-auction credits. The
+batch 3 archive records the expected scenario amount separately from the
+actual aggregate outbound message and never submits a second claim. See the
+evidence matrix for exact hashes and the distinction between aggregate claim
+messages, post-claim balances and unavailable child acceptance.
+
+After a current-contract lifecycle and its claims are finalized, regenerate the
+publishable deployment-scoped archive without exposing salts:
+
+```powershell
+$env:CLAUSEBID_CONTRACT_ADDRESS='0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b'
+node scripts/archive-configurable.mjs
+```
 
 Do not accept a finality flag without execution success. Do not turn timed-out review transactions into automatic approvals. Direct Mode mocks are not external validator evidence. A failed outbound value message does not automatically restore money. There is no privileged administrator rescue path.
 
