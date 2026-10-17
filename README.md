@@ -79,6 +79,16 @@ consensus evidence. Its finite scenarios include no-award refund, unrevealed
 bonds, delivery recovery, buyer refusal, correction exhaustion, neutral
 unwind, timely reserved reviews and stale review cancellation.
 
+The current replacement-deployment archive contains PASS runs for no-compliant
+refund, delivery default recovery, buyer refusal followed by independent PASS,
+timely reserved review after cutoff, and stale reserved-review cancellation.
+Two bounded follow-up correction/uncertain attempts reached finalized reveal
+transactions with `leaderExecution: ERROR`; they were not retried, and their
+no-award recovery is recorded as blocked provider evidence rather than a claim
+that the intended delivery paths succeeded. See
+`evidence/studionet/live-negative.json` and the evidence matrix for the exact
+hashes and balance snapshots.
+
 Do not accept a finality flag without execution success. Do not turn timed-out review transactions into automatic approvals. Direct Mode mocks are not external validator evidence. A failed outbound value message does not automatically restore money. There is no privileged administrator rescue path.
 
 ## Time control

@@ -229,7 +229,9 @@ async function tx(item,key,who,method,args=[],value=0n,expected='SUCCESS'){
  if(existingKey){
   const existing=state.transactions[existingKey];
   if(existing?.finalizedAt)return existing;
-  if(existing?.observed==='SUBMISSION_ERROR')throw Error('Submission outcome unavailable for '+method+'; no transaction hash was returned. Inspect the provider before any manual retry.');
+  if(existing?.observed==='SUBMISSION_ERROR'||(existing&&!existing.hash)){
+   throw Error('Submission outcome unavailable for '+method+'; the persisted write has no finalized receipt. Inspect the provider before any manual retry.');
+  }
   if(existing?.hash){
    const details=await transactionDetails(existing.hash,expected==='FAILURE',existing.method==='claim');
    existing.finalizedAt=nowIso();existing.receipt=receiptSummary(details.receipt,details.transaction,details.triggered);existing.trace=details.trace??null;
@@ -454,6 +456,24 @@ async function progressReservedStale(item){
  if(item.buyerClaim&&!item.sellerClaim){const result=await claim(item,item.commit.who,'seller-claim');item.sellerClaim=result?.hash??null;persist()}
  if(item.buyerClaim&&item.sellerClaim)await setTerminal(item,'PASS','STALE_RESERVED_REVIEW_CANCELLED_AFTER_GRACE_NO_AWARD');
 }
+async function recoverMissedReview(item){
+ if(item.cleanup||item.reviewReservation||!['correction-default','uncertain'].includes(item.kind)||item.status!=='BLOCKED')return;
+ const row=await read('get_procurement',[item.auctionId]);
+ if(!item.finalize){
+  if(row.status!=='BIDDING'||!deadlinePassed(row,'review_end'))return;
+  item.notes.push({at:nowIso(),note:'The intended review window was missed by the live scheduler. Recovering the auction through the contract no-award path; this does not count as the intended delivery scenario.'});
+  await markState(item,'before',false);
+  const result=await tx(item,'cleanup-finalize',4,'finalize_award',[item.auctionId],0n,'SUCCESS');item.finalize=result.hash;persist();
+ }
+ if(!item.buyerClaim){const claimResult=await claim(item,0,'cleanup-buyer-claim');item.buyerClaim=claimResult?.hash??null;persist()}
+ const sellerCredit=BigInt(await read('get_credit',[addresses[item.commit.who]]));
+ if(!item.sellerClaim&&sellerCredit>0n){const claimResult=await claim(item,item.commit.who,'cleanup-seller-claim');item.sellerClaim=claimResult?.hash??null;persist()}
+ // An unrevealed commitment forfeits its bond to the buyer, so the seller
+ // has no claim to consume. A revealed no-award offer must have its bond
+ // claim resolved before cleanup is marked complete.
+ const sellerResolved=Boolean(item.sellerClaim)||sellerCredit===0n;
+ if(item.buyerClaim&&sellerResolved){item.cleanup=true;await setTerminal(item,'BLOCKED','MISSED_REVIEW_WINDOW_RECOVERED_NO_AWARD')}
+}
 async function progress(item){
  if(item.status!=='IN_PROGRESS'&&item.status!=='RUNNING')return;
  if(item.kind!=='unrevealed'&&hasReveal(item)&&!item.reviewReservation&&deadlinePassed(item.deadlines,'review_end')){
@@ -506,6 +526,8 @@ const specs=[
  {name:'uncertain-unwind-compliant',kind:'uncertain',title:'Live negative uncertain delivery neutral unwind',expected:'Uncertain delivery produces a neutral unwind',who:1,price:2n,terms:compliantTerms},
  {name:'reserved-timely-compliant',kind:'reserved-timely',title:'Live negative timely reserved compliant review',expected:'Reserved review survives the ordinary deadline and successful delivery settles',who:2,price:2n,terms:compliantTerms},
  {name:'reserved-stale-compliant',kind:'reserved-stale',title:'Live negative stale reserved compliant review',expected:'Stale unresolved review cancels only after grace and neutral recovery settles',who:3,price:2n,terms:compliantTerms},
+ {name:'correction-default-compliant-live2',kind:'correction-default',title:'Live negative correction exhaustion second batch',expected:'Two correction opportunities fail and seller defaults with buyer recovery',who:4,price:2n,terms:compliantTerms},
+ {name:'uncertain-unwind-compliant-live2',kind:'uncertain',title:'Live negative uncertain delivery second batch',expected:'Uncertain delivery produces a neutral unwind',who:1,price:2n,terms:compliantTerms},
 ];
 async function start(){
  if(!state.startedAt)state.startedAt=nowIso();
@@ -559,10 +581,24 @@ function nextWakeSeconds(item){
 async function run(){
  if(!state.startedAt||Object.keys(state.scenarios).length<specs.length)await start();
  reviveConsensusDisagreements();
+ for(const item of Object.values(state.scenarios)){
+  try{await recoverMissedReview(item)}catch(error){recordError(item,String(error));console.log('RECOVERY BLOCKED',item.name,String(error))}
+ }
  while(Object.values(state.scenarios).some(item=>item.status==='IN_PROGRESS'||item.status==='RUNNING')){
   let progressMade=false;
-  for(const item of Object.values(state.scenarios)){
-   if(item.status!=='IN_PROGRESS'&&item.status!=='RUNNING')continue;
+  const active=Object.values(state.scenarios).filter(item=>item.status==='IN_PROGRESS'||item.status==='RUNNING').sort((left,right)=>{
+   // Reserve newly due reviews before spending the provider window on an
+   // older disagreement retry. Missing this write would permanently lose the
+   // reservation opportunity even though the scenario itself is still live.
+   const urgency=(item)=>{
+    const row=item.deadlines??{};
+    if(item.kind!=='unrevealed'&&hasReveal(item)&&!item.reviewReservation&&deadlinePassed(row,'reveal_end'))return 0;
+    if(item.reviewReservation&&!item.evaluation&&deadlinePassed(row,'review_end'))return 1;
+    return 2;
+   };
+   return urgency(left)-urgency(right)||nextWakeSeconds(left)-nextWakeSeconds(right);
+  });
+  for(const item of active){
    try{const before=item.status;await progress(item);progressMade=progressMade||before!==item.status||Boolean(item.updatedAt)}
    catch(error){item.status='BLOCKED';recordError(item,String(error));console.log('BLOCKED',item.name,String(error))}
   }

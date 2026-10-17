@@ -22,7 +22,7 @@ Verified release artifacts:
 - `studionet/live-demo-replacement.json` records the replacement-address five-wallet auction, real deadline timing, substantive findings, review disagreements and retries, correction flow, claims, emitted messages and recipient balance readbacks.
 - `studionet/consensus-investigation.json` records the independently re-fetched disagreement receipts, vote patterns, rounds, quorum-cancellation evidence, unavailable fee/timing fields and the one-round PASS convergence.
 - `studionet/live-negative.json` records resumable automated multi-wallet Studionet integration scenarios, including finalized receipts, state snapshots, entitlement accounting and native-balance readbacks. Its ignored companion `evidence/live-negative.local.json` contains salts and full private execution state and must never be published.
-- `studionet/frontend-verification.json` records the production bundle binding, Vercel deployment and the strict separation between fixture browser tests and the incomplete real-wallet browser attempt.
+- `studionet/frontend-verification.json` records the production bundle binding, Vercel deployment and the strict separation between fixture browser tests and the genuine Convert-profile wallet funding/read verification. It does not claim a browser claim settlement that was not submitted.
 - `studionet/evidence-matrix.md` maps security/economic claims to exact tests and finalized hosted transactions, and labels historical evidence from the superseded address.
 
 The frontend read-resilience implementation is covered by the coordinator unit
@@ -35,6 +35,14 @@ overlap the first. Contract reverts and all financial writes are single-attempt
 operations. The Create screen has no read-dependent load, so unrelated
 marketplace, credit, economy and claim failures cannot block procurement
 preparation.
+
+The current `live-negative.json` archive records PASS hosted scenarios for
+no-compliant refund, delivery default recovery, buyer refusal followed by
+independent PASS, timely reserved review after cutoff, and stale review
+cancellation after grace. The bounded correction and uncertain follow-up
+auctions reached finalized reveal parents with `leaderExecution: ERROR`; the
+runner preserved those failures and recovered the locked auctions through
+no-award claims without treating them as successful delivery demonstrations.
 
 The replacement claim parent receipts expose outbound message records and exact
 beneficiaries/values. The replacement archive also records post-claim recipient
