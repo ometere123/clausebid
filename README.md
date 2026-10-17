@@ -1,43 +1,264 @@
-# CLAUSEBID
+<p align="center">
+  <img src="frontend/public/favicon.svg" alt="ClauseBid logo" width="84" />
+</p>
 
-Clause-aware, bonded, escrow-funded reverse procurement for **public, bounded digital text** on GenLayer.
+<h1 align="center">ClauseBid</h1>
 
-**Architecture:** one Python Intelligent Contract, one React/Vite static frontend with seven screens. **Network:** stable Studionet, chain 61999, RPC `https://studio.genlayer.com/api`. **Currency:** native Studionet GEN. No backend, oracle, database or operator override.
+<p align="center"><strong>Where the lowest compliant bid wins.</strong></p>
 
-## Status
+<p align="center">
+  An escrow-backed reverse-procurement marketplace on GenLayer.<br />
+  Sellers compete on price. Independent AI consensus checks the terms. The contract controls the award and native GEN settlement.
+</p>
 
-The source implementation is pinned to the required Studionet toolchain and is exercised by GenVM lint, Direct Mode state-machine tests, commitment-vector tests, frontend unit tests, and Playwright browser tests. Live deployment and payout claims are recorded only in `evidence/studionet/` after receipt and recipient-balance verification; Direct Mode and the Playwright fixture harness are not presented as live validator or transfer evidence.
+<p align="center">
+  <a href="https://clausebid.vercel.app"><strong>Live marketplace</strong></a>
+  ·
+  <a href="#how-it-works">How it works</a>
+  ·
+  <a href="#verified-on-studionet">Live evidence</a>
+  ·
+  <a href="#run-locally">Run locally</a>
+</p>
 
-## Contract behavior
+<p align="center">
+  <a href="https://github.com/ometere123/clausebid/actions/workflows/checks.yml"><img src="https://github.com/ometere123/clausebid/actions/workflows/checks.yml/badge.svg" alt="CI status" /></a>
+  <img src="https://img.shields.io/badge/GenLayer-Studionet-163047" alt="GenLayer Studionet" />
+  <img src="https://img.shields.io/badge/Chain%20ID-61999-138b76" alt="Chain ID 61999" />
+  <img src="https://img.shields.io/badge/Settlement-native%20GEN-163047" alt="Native GEN settlement" />
+</p>
 
-1. Buyer creates four immutable requirements and reference facts, deposits 5–100 GEN.
-2. Sellers each deposit a refundable 5%-of-budget bond (0.5–5 GEN) and commit a SHA-256 hash binding network, contract, auction, wallet, price, terms and a 32-byte random salt.
-3. At publication the buyer chooses whole-second commitment and reveal durations. Commitment is 600–172800 seconds, reveal is 1200–345600 seconds, and their total is at most 518400 seconds. The contract freezes the schedule with the funded procurement; the buyer cannot change it later. The UI defaults to 24 hours + 48 hours and the minimum 10-minute + 20-minute schedule is available for accelerated Studionet verification.
-4. After the reveal period, anyone can reserve each revealed bid for the procurement-specific eligibility window. GenLayer validators independently re-evaluate all four material requirements. A reserved review may finalize after the application cutoff; an unresolved reservation cannot be bypassed until its explicit per-procurement grace period expires.
-5. After all revealed offers are reviewed, or after the cutoff plus review grace, deterministic code awards the lowest-price COMPLIANT bid. Ties go to the earliest commitment. Unresolved reservations fail closed.
-6. Winner submits public text within the frozen delivery window. Buyer may accept within the frozen response window; otherwise any keeper can reserve an independent fulfillment review. Two corrections are available for material defects within the frozen correction window. A review reserved before its deadline is protected from expiry races; a stale reservation can be cancelled after its per-procurement grace period.
-7. Seller claims successful escrow payment + bond. Losing revealed bidders reclaim bonds; buyer claims unspent budget. Default/no-award/unwind paths allocate liabilities deterministically.
-8. Every claim is single-use. Outbound transfers to EOAs emit on finalization; ambiguous failed transfers **must not** be blindly retried.
+> **Development network:** ClauseBid is deployed on **GenLayer Studionet**, using development-network GEN. It is not a mainnet custody or production-money service. Every deliverable and bid reveal is public on-chain.
 
-## Development
+---
 
-```sh
-npm ci                            # repository-local genlayer@0.39.1 and genlayer-js@1.1.8
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --require-hashes -r requirements.lock
-genvm-lint check contracts/clausebid.py --json
-python -m pytest -q tests
-npm ci --prefix frontend
-npm run build --prefix frontend
-npm run test --prefix frontend
+## The problem ClauseBid solves
+
+The cheapest offer is not always the cheapest *compliant* offer.
+
+A buyer might request product descriptions that include SEO titles and a six-month warranty. One seller bids 18 GEN but excludes SEO titles. Another bids 22 GEN but demands an extra charge for them. A third bids 25 GEN and includes everything. A price-only auction would select the wrong seller.
+
+ClauseBid makes the buyer's requirements immutable, escrows the budget upfront, hides seller offers until reveal, and asks GenLayer validators to independently assess which bids actually satisfy **all four required clauses**. Only then does deterministic contract logic choose the lowest-priced compliant offer.
+
+The same contract later reviews delivered work against those frozen obligations before payment is released or a correction/default path is applied.
+
+### What makes it different
+
+| Mechanism | Why it matters |
+| --- | --- |
+| **Funded procurement** | The buyer deposits the entire GEN budget before sellers take on the opportunity. |
+| **Sealed commit–reveal** | Prices and offers are cryptographically committed before competitors can inspect them. |
+| **Material AI consensus** | Independent validators check obligations, exclusions, contradictions and conditional charges, not just output formatting. |
+| **Deterministic award** | The cheapest `COMPLIANT` bid wins; equal prices go to the earliest valid commitment. |
+| **Delivery adjudication** | Buyer acceptance or independently validated fulfillment determines the seller's payment rights. |
+| **Contract-enforced recovery** | Refunds, bond forfeitures, corrections and neutral unwinds follow recorded state, not administrator discretion. |
+| **Public financial trail** | Procurement, seller, verdict, credit and immutable claim records can be inspected on-chain. |
+
+## How it works
+
+```mermaid
+flowchart TD
+    A["Buyer freezes four requirements<br/>and escrows GEN"] --> B["Sellers lock bonds<br/>and submit sealed commitments"]
+    B --> C["Reveal exact offers<br/>during the chosen window"]
+    C --> D["Independent GenLayer<br/>bid-eligibility consensus"]
+    D --> E{"Any compliant bid?"}
+    E -->|No| F["No award:<br/>buyer refund and bond accounting"]
+    E -->|Yes| G["Lowest compliant price wins<br/>earliest commitment breaks ties"]
+    G --> H["Winner submits public<br/>digital-text deliverable"]
+    H --> I{"Buyer accepts or<br/>independent fulfillment review"}
+    I -->|Pass| J["Seller payout<br/>plus bond return"]
+    I -->|Defect| K["Up to two corrections;<br/>default if exhausted"]
+    I -->|Unresolved| L["Defined neutral unwind"]
+    K --> I
 ```
 
-Copy `frontend/.env.example` to `frontend/.env`, then populate **an actual verified contract address** after deployment. Run `npm run dev --prefix frontend`.
+**For buyers:** create and fund a procurement, specify exactly four mandatory conditions, choose separate bidding windows, compare verified eligibility results, inspect delivery, and claim any refund or unused budget.
 
-Only connect an injected EIP-1193 wallet to Studionet. Private keys used by CLI scripts stay in ignored `.env` files. The driver also supports the repository-local encrypted CLI keystores through `CLAUSEBID_KEYSTORE_PASSWORD`; it never writes private keys to the repository. Contract writes require separate protocol fees; escrow value must not be treated as payment for protocol fees.
+**For sellers:** read the immutable scope, post the required bond, save the secret reveal package, reveal the exact committed price and terms, and deliver the awarded work. Sellers recover their bonds when the rules permit; non-reveal or default can forfeit a bond.
 
-The browser subscribes to `accountsChanged`, `chainChanged` and `disconnect`, and silently restores an already-authorized account with `eth_accounts` after reload without opening a signing prompt. The Disconnect wallet control clears only ClauseBid's local session; injected-wallet authorization remains under the wallet's own controls, so a refresh may restore that account. Locally tracked transaction hashes are restored after reload, and a parent receipt is never presented as an external payout receipt. The claim explorer keys archived receipts by chain, deployment, beneficiary and amount; the superseded deployment is retained only as historical evidence. Read traffic uses one shared coordinator with three concurrent slots, identical-read deduplication, deployment-scoped confirmed-data caching, and at most two transient retries with exponential and retry-after backoff. Concurrent retries reserve staggered slots after a rate-limit response. Create performs no contract reads; Marketplace and Home load only procurement records; My dashboard loads wallet-relevant activity and that wallet's credit; Audit Explorer loads claim history. Read diagnostics retain only the RPC method, contract method, sanitized provider code/status, retry count and a bounded message. A read failure in an optional area preserves confirmed cards and shows a specific warning. Studionet read-rate-limit responses are shown as unavailable rather than fabricated state. Financial writes and contract reverts are never retried by the read coordinator. The Playwright suite uses an explicitly test-only `VITE_E2E_FIXTURE=true` synthetic contract-state harness for recovery/error UI; production builds never set that flag. The deployed URL is separately checked against the real Studionet binding. The production bundle and genuine-wallet verification status are recorded in `evidence/studionet/frontend-verification.json`.
+**For participants and keepers:** initiate eligible reviews and deadline transitions without a privileged marketplace operator. The caller pays the relevant network transaction fees.
+
+## Why GenLayer is essential
+
+ClauseBid relies on **two economically consequential semantic decisions** made through GenLayer's Intelligent Contract execution and validator equivalence mechanism:
+
+1. **Bid eligibility:** For each revealed offer, independently evaluate all four mandatory obligations. Missing work, excluded conditions, contradictory promises and mandatory upcharges can make a low bid ineligible.
+2. **Delivery fulfillment:** Compare the delivered public text against the original requirements. A substantive pass enables seller settlement; a defect leads to correction or default; genuinely inconclusive results follow the contract's neutral-unwind rules.
+
+Validators independently regenerate material clause-level findings and check the proposed decision. The contract, rather than the model, determines recipient addresses, winning prices, deadline arithmetic and GEN entitlements.
+
+This is not an off-chain chatbot making a recommendation. **Semantic outcomes alter funded on-chain economic state.**
+
+Independent evaluations can disagree, and a live `UNKNOWN` fulfillment verdict is not guaranteed. The contract preserves defined recovery and fail-closed behaviour instead of treating a disputed result as automatic approval. See [security and trust boundaries](docs/SECURITY.md).
+
+## Buyer-configurable deadlines
+
+Each buyer selects the commitment and reveal windows **independently** when funding a procurement. Both values and their derived deadlines become immutable for that procurement.
+
+| Window | Minimum | Frontend default | Maximum |
+| --- | ---: | ---: | ---: |
+| Commitment | 10 minutes | 24 hours | 48 hours |
+| Reveal | 20 minutes | 48 hours | 96 hours |
+| **Total bidding** | **30 minutes** | **72 hours** | **144 hours** |
+
+Different procurements can use different schedules **under the same deployed contract**. Short windows allow accelerated Studionet testing; longer windows are more practical when several sellers need time to participate.
+
+From `T = commitment + reveal`, the contract derives immutable, bounded windows:
+
+- **Eligibility review, seller delivery and review-grace periods:** `min(T, 72 hours)`
+- **Buyer response:** `min(T / 3, 24 hours)`, using integer seconds
+- **Each of two correction opportunities:** `min(2T / 3, 48 hours)`, using integer seconds
+
+A timely reserved review remains protected while it is in flight, subject to the contract's explicit recovery rules. **Application deadlines do not shorten the network's consensus, appeal or finalization periods.** Very short bidding windows can expose participants to higher timing risk.
+
+For exact transaction-boundary rules, see [the contract state machine](docs/STATE_MACHINE.md).
+
+## Escrow and bond economics
+
+| Rule | On-chain policy |
+| --- | --- |
+| Buyer budget | 5–100 native GEN, deposited in full |
+| Mandatory requirements | Exactly four immutable clauses |
+| Participating sellers | Up to 12 wallet addresses per procurement |
+| Seller bond | 5% of budget, minimum 0.5 GEN, maximum 5 GEN |
+| Offer price | From 1 GEN up to the funded budget |
+| Protocol fee | No ClauseBid platform fee; network fees still apply |
+| Award | Lowest finalized `COMPLIANT` offer |
+| Valid losing reveals | Bond returned as claimable credit |
+| Unrevealed bid | Bond forfeited according to contract rules |
+| Successful fulfillment | Winning price and seller bond credited to the winner |
+| Delivery default | Buyer recovery and winner-bond forfeiture |
+| Inconclusive fulfillment | Contract-defined neutral unwind |
+
+Credits are claimed by their intended wallets. A claim consumes its credit before emitting an outbound native-GEN value message, protecting against duplicate dispatch. Claims from multiple procurements may be aggregated for the same wallet.
+
+## Seven connected screens
+
+| Screen | What it does |
+| --- | --- |
+| **Home** | Explains ClauseBid and introduces live procurements. |
+| **Marketplace** | Browse and filter funded procurements and their actual contract states. |
+| **Create procurement** | Set the scope, four clauses, budget and independent commitment/reveal durations; fund from an injected wallet. |
+| **Auction room** | Commit or reveal offers, inspect eligibility, advance reviews and finalize the award. |
+| **Delivery workspace** | Submit work, accept or dispute delivery, initiate review, correct defects and recover expired cases. |
+| **My dashboard** | Follow buyer/seller activity, wallet-specific credits and transaction status. |
+| **Audit explorer** | Inspect contract state, eligibility findings, claim records and available transaction evidence. |
+
+The frontend uses **injected EIP-1193 wallets** on Studionet. It has no database or backend authority. Reads are scoped to the active screen, concurrency is bounded, identical reads are deduplicated, and temporary RPC read failures can use limited retries and previously confirmed data. **Financial writes are never automatically resubmitted.**
+
+## Verified on Studionet
+
+The current **configurable-duration contract** has a recorded funded five-wallet demonstration and independent negative-path integration evidence. Historical transactions from older deployments are kept separately, never presented as proof of this contract's source.
+
+### A real lowest-compliant-bid result
+
+In funded **procurement #9**, four seller wallets competed for a 35 GEN budget:
+
+| Offer | Eligibility | Award |
+| --- | --- | --- |
+| 18 GEN | `NONCOMPLIANT` | Excluded despite being cheapest |
+| 22 GEN | `UNCERTAIN` after unresolved-review recovery | Ineligible |
+| **25 GEN** | **`COMPLIANT`** | **Winner** |
+| 28 GEN | `COMPLIANT` | Eligible but more expensive |
+
+The award was followed by a submitted delivery and buyer acceptance; the procurement reached **`SETTLED`**.
+
+- [Award transaction](https://explorer-studio.genlayer.com/tx/0xc2abf1df0cd2cca8c42c88b7a75bd4a47c10cecbdd7b977608c9dea1b752023d)
+- [Delivery transaction](https://explorer-studio.genlayer.com/tx/0xde561ab49cc333ec5985138864ffb4f94c9e04afffe2e788215f60bc582b56ee)
+- [Acceptance transaction](https://explorer-studio.genlayer.com/tx/0x3a1bb9991a265ae5db3cab035e9501028cfd6adc80a4c3704392add974c4d680)
+
+### Verified engineering and financial evidence
+
+- **Automated release checks:** 41 Direct Mode, 2 Python commitment-vector, 19 frontend-unit and 5 Playwright tests passed at the [verified release CI run](https://github.com/ometere123/clausebid/actions/runs/39032646200), alongside GenVM lint and production build checks. Fixture-based Playwright tests are frontend regressions, **not** live wallet/consensus evidence.
+- **Funded negative paths:** no-award refund, unrevealed-bond forfeiture, seller default, correction exhaustion, buyer refusal followed by independent fulfillment PASS, timely reserved-review protection, stale-review cancellation and duplicate/unauthorised claim rejection have archived transaction evidence.
+- **Claim-accounting archive:** 19 immutable claims, **128 GEN dispatched**, **119 GEN outstanding** and **119 GEN contract balance**. Claim parents, beneficiaries and outbound message amounts are cross-checked in the archive.
+
+The live attempt to obtain a semantic `UNKNOWN` fulfillment outcome did **not** produce that result after three finalized reviews. Direct Mode verifies the associated neutral-unwind branch; it is not represented as a completed live semantic-UNKNOWN demonstration.
+
+**Settlement evidence boundary:** The stable Studionet SDK does not expose independent child-message acceptance for these claims. The recorded claim status remains `DISPATCHED_PENDING_EXTERNAL_SETTLEMENT`; parent finalization and beneficiary balance readbacks must not be presented as a separate proof of child acceptance.
+
+**Explore the evidence:**
+[Current evidence matrix](evidence/studionet/evidence-matrix.md) ·
+[Funded demonstration](evidence/studionet/live-demo-configurable.json) ·
+[Negative-path archives](evidence/README.md) ·
+[Source verification](evidence/studionet/source-verification.json)
+
+## Live contract and architecture
+
+| Property | Value |
+| --- | --- |
+| Network | GenLayer Studionet |
+| Chain ID | `61999` |
+| RPC | `https://studio.genlayer.com/api` |
+| Intelligent Contract | `0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b` |
+| Contract source | [`contracts/clausebid.py`](contracts/clausebid.py) |
+| Deployment receipt | [View on explorer](https://explorer-studio.genlayer.com/tx/0x586ee807c33b94b58363ddff16d19f8141375a5309d0e5c5c78ed1a4c438be7c) |
+| Source SHA-256 | `85939c9191661b34ec16a5d37a0d6ee1ad1ccb562ac066dec8b843c01879e241` |
+| Production frontend | [clausebid.vercel.app](https://clausebid.vercel.app) |
+
+The application has **one authoritative Python Intelligent Contract** and a **React 19 / TypeScript / Vite 7 / Tailwind CSS 4** static frontend on Vercel. Contract state is the source of truth; no centralized service allocates winners or payouts.
+
+| Layer | Implementation |
+| --- | --- |
+| Intelligent Contract | Python 3.12, GenVM, custom substantive validator checking |
+| Network tooling | Repository-local `genlayer@0.39.1`, `genlayer-js@1.1.8` |
+| Frontend | React 19, TypeScript 5.9, Vite 7, Tailwind CSS 4 |
+| Wallet | Browser-injected EIP-1193 |
+| Tests | Direct Mode, pytest, Vitest, Playwright, CI |
+| Deployment | Studionet contract and Vercel static frontend |
+
+The source and fetched deployed code have a matching recorded SHA-256. Prior contract deployments retain their own evidence and liabilities; **funds and procurements are not migrated** to the new address.
+
+## Run locally
+
+**Requirements:** Node.js 22, Python 3.12, access to GenLayer Studionet, and an injected EIP-1193 wallet for signed transactions.
+
+```bash
+git clone https://github.com/ometere123/clausebid.git
+cd clausebid
+
+# Install the pinned repository-local GenLayer tooling
+npm ci
+
+# Install and run the frontend
+npm ci --prefix frontend
+cp frontend/.env.example frontend/.env
+
+# Edit frontend/.env:
+# VITE_CLAUSEBID_ADDRESS=0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b
+# VITE_STUDIONET_RPC=https://studio.genlayer.com/api
+
+npm run dev
+```
+
+Vite prints the local URL (normally `http://localhost:5173`). Funding, bidding, reviews and claims use real Studionet transactions; wallet gas/consensus fees are separate from deposited GEN.
+
+### Verify the code
+
+```bash
+# Python 3.12 virtual environment
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install --require-hashes -r requirements.lock
+
+# Contract and Direct Mode
+genvm-lint check contracts/clausebid.py
+python -m pytest -q tests/test_commit_vectors.py
+python -m pytest -q tests/direct
+
+# Frontend
+npm run build --prefix frontend
+npm run test --prefix frontend
+cd frontend
+npx playwright install chromium
+npm run test:e2e
+```
+
+On Windows PowerShell, create the environment using `py -3.12 -m venv .venv` and activate it with `.\.venv\Scripts\Activate.ps1`. The pinned GenVM runner cache may require the compatibility step documented in [.github/workflows/checks.yml](.github/workflows/checks.yml).
+
+For deployment/source verification, funded multi-wallet scripts, resumable negative scenarios and reproducible evidence collection, see [the evidence guide](evidence/README.md) and the scripts in [`scripts/`](scripts/). **Never commit private keys, reveal salts, keystore passwords or local session files.**
+
+## Repository guide
 
 ## Frontend read resilience
 
@@ -45,111 +266,38 @@ Read scheduling is screen-specific and uses one shared three-slot coordinator. D
 
 When a read fails, the interface distinguishes a verified empty result, previously confirmed but potentially stale data, and unavailable data. It preserves confirmed balances and cards when an unrelated read fails, shows incomplete-result warnings until bounded searches finish, and records sanitized method, provider code, HTTP status, attempt count and last successful read time in deployment-scoped browser diagnostics. The test-only fixture harness is enabled only in Vite development builds and is never active in production.
 
-## Live evidence
-
-Use the repository-local CLI entry point, never a globally installed version:
-
-```sh
-node node_modules/genlayer/dist/index.js network set studionet
-node node_modules/genlayer/dist/index.js network info
-node node_modules/genlayer/dist/index.js deploy --contract contracts/clausebid.py
-node scripts/preflight.mjs
-node --env-file=.env scripts/drive.mjs inspect
+```text
+contracts/clausebid.py         Authoritative Intelligent Contract
+frontend/src/                  Seven screens, wallet integration and reads
+frontend/tests/e2e/            Browser regression tests
+tests/direct/                  Contract state machine and time-boundary tests
+scripts/                       Deployment checks and live scenario drivers
+docs/STATE_MACHINE.md          Contract transitions and deadline rules
+docs/SECURITY.md               Invariants, threats and trust boundaries
+evidence/studionet/            Deployment provenance, receipts and results
+.github/workflows/checks.yml  Continuous integration
 ```
 
-The driver queues independent wallet submissions during the short commitment window, records every transaction ID in the ignored `evidence/session.local.json`, and requires `FINALIZED` plus a successful leader execution/return in the pinned SDK receipt before treating a write as successful. On Studionet, `genlayer-js@1.1.8` exposes the execution result through the consensus leader receipt rather than always populating `txExecutionResultName`. `claim` finality is still not payout evidence: inspect the immutable claim record, outbound message/child receipt, and recipient balance delta.
+## Security and limitations
 
-For local encrypted CLI accounts, set `CLAUSEBID_KEYSTORE_PASSWORD` only in the calling shell and use the default account names (`praest-deployer`, `clausebid-seller-a` through `clausebid-seller-d`). Do not place that password or keystore contents in Git. The five-wallet driver uses real elapsed Studionet time; it does not warp the hosted chain.
+ClauseBid provides **on-chain agreement about the published procurement rules**, not independent proof that a buyer's reference facts are true, that a delivery is original, or that public digital work has not already been copied.
 
-The resumable negative-path runner uses the same five encrypted CLI accounts and
-real elapsed time. It persists private salts and full receipts only in the
-ignored `evidence/live-negative.local.json`; the publishable summaries are
-written to `evidence/studionet/live-negative.json`.
+- Bid terms and delivered text become **public** on-chain. Do not use the service for confidential material.
+- A wallet is not a unique human identity. The bonded 12-wallet limit does not prevent Sybil participation.
+- Independent semantic assessments can disagree or remain unresolved. The contract uses eligibility exclusions, review grace and documented unwind/default rules rather than assuming every model response is reliable.
+- Native GEN escrow and claim entitlements have on-chain records, but child-message acceptance observability is limited on the current Studionet tooling. Ambiguous payouts are **never blindly retried**.
+- StudioNet is a **development network**. This implementation is not a claim of commercial mainnet readiness or cryptographically guaranteed fair exchange of public text.
 
-```powershell
-$env:CLAUSEBID_CONTRACT_ADDRESS='0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b'
-$env:CLAUSEBID_KEYSTORE_PASSWORD='set only in this shell'
-node scripts/live-negative.mjs start
-node scripts/live-negative.mjs resume
-node scripts/live-negative.mjs status
-```
+See [security and trust boundaries](docs/SECURITY.md), [the full state machine](docs/STATE_MACHINE.md) and [the evidence matrix](evidence/studionet/evidence-matrix.md).
 
-For a timing-critical minimum-duration run, queue commitments first and let the
-driver wait for the actual on-chain reveal opening before submitting the saved
-packages. This waits for the opening boundary and never retries a finalized
-failure:
+### GenLayer references
 
-```powershell
-$env:CLAUSEBID_SESSION_FILE='evidence/session.configurable.min3.local.json'
-node scripts/drive.mjs wait-reveal
-node scripts/drive.mjs verify-pending
-```
+[Storage](https://docs.genlayer.com/developers/intelligent-contracts/storage) ·
+[Equivalence principle](https://docs.genlayer.com/developers/intelligent-contracts/equivalence-principle) ·
+[Value transfers](https://docs.genlayer.com/developers/intelligent-contracts/features/value-transfers) ·
+[Writing contract data](https://docs.genlayer.com/developers/decentralized-applications/writing-data) ·
+[Direct Mode testing](https://docs.genlayer.com/developers/intelligent-contracts/testing)
 
-`resume` is safe to run after interruption. It records finalized parent
-receipts, successful or failed execution, state snapshots, entitlement values,
-and pre/post native-balance reads. Reads are serialized with bounded spacing;
-only transient reads may retry. A hashless preflight failure is preserved as
-`SUBMISSION_ERROR`; the resumable runner may remove and retry only that
-non-financial review preflight after inspecting its error class. It never
-retries an ambiguous claim, deposit, entitlement or outbound value transfer.
-The runner's hosted results are automated multi-wallet Studionet integration
-testing, not Direct Mode or mocked consensus evidence. The current configurable
-deployment has PASS archives for no-award refund, unrevealed-bond forfeiture,
-delivery recovery, buyer refusal followed by independent PASS, correction
-exhaustion, timely reserved review protection and stale review cancellation.
-The uncertain-delivery archive remains explicitly `BLOCKED`: three finalized
-delivery-review attempts did not return an `UNKNOWN` consensus, so the runner
-did not mislabel the fallback default as a neutral unwind.
+---
 
-The previous replacement deployment remains historical evidence. New hosted
-results for the configurable deployment are kept separately under
-`evidence/studionet/live-demo-configurable.json` and
-`evidence/studionet/live-negative-configurable-*.json`, so a receipt from an
-older address cannot be attributed to the current contract. A scenario is
-reported as PASS only when its finalized parent execution, state transition,
-liability accounting and required recipient readbacks are present; provider
-errors and unresolved consensus remain explicitly BLOCKED. The current
-minimum-duration auction 9 is finalized as `SETTLED` and its deployment-scoped
-archive has 19 unique claim-parent mappings, 128 GEN dispatched, 119 GEN
-outstanding and a matching 119 GEN contract balance. Because credits are keyed
-by wallet, a valid claim may consume multiple settled-auction credits. The
-batch 3 archive records the expected scenario amount separately from the
-actual aggregate outbound message and never submits a second claim. See the
-evidence matrix for exact hashes and the distinction between aggregate claim
-messages, post-claim balances and unavailable child acceptance.
-
-After a current-contract lifecycle and its claims are finalized, regenerate the
-publishable deployment-scoped archive without exposing salts:
-
-```powershell
-$env:CLAUSEBID_CONTRACT_ADDRESS='0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b'
-node scripts/archive-configurable.mjs
-```
-
-Do not accept a finality flag without execution success. Do not turn timed-out review transactions into automatic approvals. Direct Mode mocks are not external validator evidence. A failed outbound value message does not automatically restore money. There is no privileged administrator rescue path.
-
-## Time control
-
-Each procurement freezes its own schedule at funding. The contract accepts commitment durations from 600 seconds (10 minutes) through 172800 seconds (48 hours), reveal durations from 1200 seconds (20 minutes) through 345600 seconds (96 hours), and a combined total from 1800 seconds through 518400 seconds (144 hours). The frontend defaults to 86400 + 172800 seconds (24 + 48 hours), while the live accelerated runner explicitly selects 600 + 1200 seconds.
-
-From `T = commit_seconds + reveal_seconds`, the contract derives eligibility review, delivery, bid-review grace, delivery review and delivery-review grace as `min(T, 72 hours)`, buyer response as `min(T // 3, 24 hours)`, and each correction as `min((2 * T) // 3, 48 hours)`. Phase deadlines are anchored to the actual on-chain start of that phase: publication, reveal close, award, delivery submission, buyer response/review, or correction decision as applicable. These values are immutable per procurement and are read from `get_procurement`; they are not frontend timers.
-
-The underlying chain's consensus/appeal/finalization periods are not controlled by application durations. A timely reserved review may finalize after its application deadline; expiry and cancellation cannot create a contradictory economic outcome while that reservation remains in flight. Direct Mode uses `vm.warp()` to prove long schedules; hosted Studionet uses real elapsed time.
-
-## Auditing boundaries
-
-The product relies on the buyer's frozen product facts and signed offers; it does not authenticate real-world product truth, originality or confidentiality. All text is public. Bounded wallets are not unique human identities. Genuine uncertainty can unwind a delivery, and rejected text may have already been read by the buyer.
-
-## Public API
-
-`create_procurement`, `commit_bid`, `reveal_bid`, `begin_bid_review`, `evaluate_bid`, `cancel_bid_review`, `finalize_award`, `submit_delivery`, `accept_delivery`, `dispute_delivery`, `begin_delivery_review`, `review_delivery`, `expire_delivery`, `claim`. Reads: `get_procurement`, `get_offer`, `get_seller`, `get_credit`, `get_claim`, `get_delivery_attempt`, `get_delivery_verdict`, `get_economy`, `get_count`.
-
-## Source references
-
-- [GenLayer storage](https://docs.genlayer.com/developers/intelligent-contracts/storage)
-- [Equivalence principle](https://docs.genlayer.com/developers/intelligent-contracts/equivalence-principle)
-- [Payable value transfers](https://docs.genlayer.com/developers/intelligent-contracts/features/value-transfers)
-- [Studionet transactions](https://docs.genlayer.com/developers/decentralized-applications/writing-data)
-- [Direct Mode](https://docs.genlayer.com/developers/intelligent-contracts/testing)
-
-Deployment-specific addresses, source hashes, receipts, and recipient readbacks belong in `evidence/studionet/`; absent evidence is reported as absent rather than inferred from a finalized parent transaction.
+<p align="center"><strong>ClauseBid</strong><br />Where the lowest compliant bid wins.</p>

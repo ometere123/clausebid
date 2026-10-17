@@ -83,10 +83,15 @@ receipt is independently exposed by the pinned SDK.
 | A stale reserved review cancels only after grace | #25, `PASS`, `STALE_RESERVED_REVIEW_CANCELLED_AFTER_GRACE_NO_AWARD` | Cancellation `0x8fb20ba89e4c9cb1dacf04221f3879daa10dcc5292714c363d7669dd3aa821a0`; no-award `0xbf86f112f3c40509468e1167592ca3ddbcf2dd8f077e3538ba70010ebf4f2367`; claims `0xdcfde1000784ee2f18b4d63f1d75f9b61b58f979f498b53cc7e8909be2b83400`, `0x733a70401b2cb99587f138936650a52f3cda47a6f768629c8d1c992956b4ff4b` |
 | Failed live reveal is recovered without resubmission | #26 and #27, `BLOCKED` intended correction/uncertain paths; both reveal parents finalized with `leaderExecution: ERROR` and no state transition | #26 reveal `0x6778ebbc87c70b1669c777170f30310388f16ba10d8b9a74eacd5931c8604a0c`; #27 reveal `0xe46755a5ced058e4fe65c036e455c1851d25f5d11222cd4fd80079b8961d99d0`; subsequent no-award and buyer-only recovery claims are recorded in `live-negative.json` |
 
-The two blocked rows are provider-limited live evidence, not successful
-correction or neutral-unwind demonstrations. Direct Mode still covers both
-state-machine paths; the hosted runner intentionally does not resubmit a
-finalized failed reveal.
+These two historical `BLOCKED` scenarios were caused by late submission in the
+live test runner, not an established Studionet provider failure. For #26, the
+reveal deadline was 2026-10-17 05:11:44 UTC but its transaction was submitted
+at 05:36:08 UTC. For #27, the deadline was 05:14:57 UTC and submission was
+at 05:37:03 UTC. Both finalized without an accepted reveal. They therefore do
+not prove the intended correction-exhaustion or neutral-unwind lifecycles.
+Direct Mode covers those paths, and the later configurable-contract archive
+separately proves correction exhaustion in auction #5. The hosted runner did
+not resubmit either finalized failed reveal.
 
 ### Consensus recheck
 
