@@ -15,5 +15,6 @@ coverage/
 *.log
 evidence/session.local.json
 evidence/session.*.local.json
+evidence/live-negative.local.json
 .vercel
 .env*

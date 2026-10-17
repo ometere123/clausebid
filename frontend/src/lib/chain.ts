@@ -29,9 +29,14 @@ function retryAfterSeconds(value:unknown):number{
  const candidate=value as any;
  const direct=Number(candidate?.cause?.data?.retry_after_seconds??candidate?.data?.retry_after_seconds);
  if(Number.isFinite(direct)&&direct>0)return direct;
- const text=String(candidate?.details??candidate?.cause?.details??'');
+ const text=[candidate?.message,candidate?.details,candidate?.shortMessage,candidate?.cause?.message,candidate?.cause?.details].filter(Boolean).join(' ');
  const match=text.match(/retry_after_seconds[^0-9]*(\d+)/i);
  return match?Number(match[1]):0;
+}
+function isTransientReadError(value:unknown):boolean{
+ const candidate=value as any;
+ const text=[candidate?.message,candidate?.details,candidate?.shortMessage,candidate?.cause?.message,candidate?.cause?.details].filter(Boolean).join(' ');
+ return /failed to fetch|fetch failed|networkerror|load failed/i.test(text);
 }
 export function decodeContractValue(raw:any):any {
   if(raw instanceof Map)return Object.fromEntries(Array.from(raw.entries(),([k,v])=>[String(k),decodeContractValue(v)]));
@@ -44,13 +49,14 @@ export async function read(functionName:string,args:unknown[]=[]):Promise<any>{
   const initialWait=Math.max(0,readBackoffUntil-Date.now());
   if(initialWait)await wait(initialWait);
   try{return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));}
-  catch(error){
+ catch(error){
    const retry=retryAfterSeconds(error);
-   if(!retry||retry>120)throw error;
-   readBackoffUntil=Math.max(readBackoffUntil,Date.now()+retry*1000);
+   const transient=isTransientReadError(error);
+   if((!retry&&!transient)||retry>120)throw error;
+   readBackoffUntil=Math.max(readBackoffUntil,Date.now()+(retry?retry*1000:2500));
    await wait(Math.max(0,readBackoffUntil-Date.now()));
    return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));
-  }
+ }
 }
 export async function connectWallet():Promise<string>{
   const p=provider();

@@ -48,7 +48,13 @@ const FILE=process.env.CLAUSEBID_SESSION_FILE ?? 'evidence/session.local.json';
 const state=fs.existsSync(FILE)?JSON.parse(fs.readFileSync(FILE,'utf8')):{contract:ADDRESS,chain:61999,history:[],reveal:{}};
 if(state.contract&&state.contract.toLowerCase()!==ADDRESS.toLowerCase()||state.chain!==61999)throw Error('Session file binds a different contract or chain');
 const persist=()=>{fs.mkdirSync(path.dirname(FILE),{recursive:true});fs.writeFileSync(FILE,JSON.stringify(state,null,2),{mode:0o600})};
-const id=()=>{if(!state.auctionId)throw Error('Run create first');return Number(state.auctionId)};
+const id=()=>{
+ const raw=state.auctionId??process.env.CLAUSEBID_AUCTION_ID;
+ if(raw===undefined||raw===null||raw==='')throw Error('Run create or attach first');
+ const value=Number(raw);
+ if(!Number.isInteger(value)||value<1)throw Error('Auction ID must be a positive integer');
+ return value;
+};
 const U=10n**18n;
 const clauses=[
  'Deliver exactly three complete descriptions of approved products.',
@@ -90,7 +96,13 @@ async function send(who,method,args=[],value,wait=true){
  return hash;
 }
 const cmd=process.argv[2]||'help';
-if(cmd==='create'){
+if(cmd==='attach'){
+ const requested=process.env.CLAUSEBID_AUCTION_ID;
+ state.auctionId=requested?Number(requested):Number(await read('get_count'));
+ if(!Number.isInteger(state.auctionId)||state.auctionId<1)throw Error('Invalid auction ID');
+ state.attachedAt=new Date().toISOString();persist();
+ console.log('Attached auction:',state.auctionId);
+}else if(cmd==='create'){
  if(state.auctionId)throw Error('Auction already in session; use new local session after separately settling the old one');
  const previous=state.history.find(x=>x.method==='create_procurement'&&x.state==='finalized-success');
  if(previous){
@@ -153,6 +165,10 @@ if(cmd==='create'){
  }
 }else if(cmd==='award'){
  await send(0,'finalize_award',[id()]);
+}else if(cmd==='award-as'){
+ const who=Number(process.env.CLAUSEBID_CALLER_INDEX??4);
+ if(!Number.isInteger(who)||who<0||who>4)throw Error('CLAUSEBID_CALLER_INDEX must be 0..4');
+ await send(who,'finalize_award',[id()]);
 }else if(cmd==='deliver'){
  const a=await read('get_procurement',[id()]);
  const idx=wallets.findIndex(x=>x.address.toLowerCase()===String(a.winner).toLowerCase());
@@ -197,6 +213,22 @@ if(cmd==='create'){
  try{await send(0,'claim');}
  catch(error){rejected=true;console.log('Expected duplicate-claim rejection after receipt inspection:',String(error));}
  if(!rejected)throw Error('duplicate claim unexpectedly succeeded; stop and inspect the new transaction before any retry');
+}else if(cmd==='snapshot'){
+ const auction=id();
+ const a=await read('get_procurement',[auction]);
+ const offers=[];
+ for(let n=0;n<Number(a.bidder_count);n++){
+  const seller=await read('get_seller',[auction,n]);
+  offers.push({position:n,seller,offer:await read('get_offer',[auction,seller])});
+ }
+ const balances=[];
+ for(let n=0;n<5;n++)balances.push({wallet:KEYS[n],address:wallets[n].address,credit:String(await read('get_credit',[wallets[n].address.toLowerCase()]))});
+ console.log(JSON.stringify({auctionId:auction,procurement:a,offers,credits:balances,economy:await read('get_economy')},(_,x)=>typeof x==='bigint'?x.toString():x,null,2));
+}else if(cmd==='overview'){
+ const count=Number(await read('get_count'));
+ const procurements=[];
+ for(let auction=1;auction<=count;auction++)procurements.push({auctionId:auction,procurement:await read('get_procurement',[auction])});
+ console.log(JSON.stringify({count,procurements,economy:await read('get_economy')},(_,x)=>typeof x==='bigint'?x.toString():x,null,2));
 }else if(cmd==='verify-pending'){
  for(const entry of state.history.filter(x=>x.state==='submitted'||x.state==='finalized-failed')){
   console.log('Checking previously submitted transaction',entry.hash);
@@ -215,6 +247,6 @@ if(cmd==='create'){
  console.log('Economy',safe(await read('get_economy')));
  console.log('Recorded writes',state.history.length);
 }else{
- console.log('Commands: create, commit-all, reveal-all, evaluate-all, verify-pending, award, deliver, dispute, review, accept, expire, claim-all, inspect');
+ console.log('Commands: attach, create, commit-all, reveal-all, evaluate-all, retry-evaluate, verify-pending, award, award-as, deliver, deliver-defect, dispute, review, retry-delivery-review, accept, expire, claim-all, duplicate-claim, snapshot, overview, inspect');
  console.log('Use real wall-clock windows, NEVER warp hosted Studionet. No command changes network time.');
 }

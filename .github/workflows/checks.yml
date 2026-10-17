@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Check resumable live scripts
+        run: |
+          node --check scripts/drive.mjs
+          node --check scripts/live-negative.mjs
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund

@@ -18,15 +18,35 @@ export function remaining(unix:unknown):string {
 }
 export const short=(wallet:string)=>wallet?wallet.slice(0,6)+'…'+wallet.slice(-4):'';
 export const safeJson=(value:unknown)=>JSON.stringify(value,(_,v)=>typeof v==='bigint'?v.toString():v,2);
+function errorParts(value:unknown):string[]{
+ const parts:string[]=[];
+ const queue:unknown[]=[value];
+ const seen=new Set<object>();
+ while(queue.length&&parts.length<24){
+  const current=queue.shift();
+  if(typeof current==='string'){parts.push(current);continue}
+  if(!current||typeof current!=='object')continue;
+  if(seen.has(current))continue;
+  seen.add(current);
+  const candidate=current as Record<string,unknown>;
+  for(const key of ['message','details','shortMessage','reason'])if(typeof candidate[key]==='string')parts.push(candidate[key] as string);
+  for(const key of ['cause','error'])if(candidate[key])queue.push(candidate[key]);
+  if(candidate.data&&typeof candidate.data==='object')queue.push(candidate.data);
+ }
+ return parts;
+}
 export const errorText=(value:unknown)=>{
  const candidate=value as any;
- const details=String(candidate?.details??candidate?.cause?.details??'');
- const code=candidate?.code??candidate?.cause?.code;
- const retry=Number(candidate?.cause?.data?.retry_after_seconds??candidate?.data?.retry_after_seconds);
- if(code===-32029||/rate limit exceeded/i.test(details)){
+ const parts=errorParts(value);
+ const details=parts.join(' | ');
+ const code=candidate?.code??candidate?.cause?.code??candidate?.cause?.cause?.code;
+ const retry=Number(candidate?.cause?.data?.retry_after_seconds??candidate?.data?.retry_after_seconds??candidate?.cause?.cause?.data?.retry_after_seconds);
+ if(code===-32029||/rate limit exceeded|too many requests|\b429\b|retry_after_seconds/i.test(details)){
   const wait=Number.isFinite(retry)&&retry>0?` Try again in ${Math.ceil(retry)} seconds.`:' Try again shortly.';
   return 'Studionet RPC rate limit reached.'+wait+' No transaction was submitted.';
  }
+ if(/user rejected|rejected the request|denied the request/i.test(details))return 'Wallet request rejected. No transaction was submitted.';
+ if(/failed to fetch|fetch failed|networkerror|load failed/i.test(details))return 'Studionet RPC is temporarily unavailable. Retry the read shortly. No transaction was submitted.';
  if(value instanceof Error)return value.message||value.name;
  if(typeof value==='string')return value;
  const encoded=safeJson(value);
