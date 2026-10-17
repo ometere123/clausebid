@@ -10,6 +10,7 @@ export function isSuccessful(receipt:any):boolean {
 }
 import {studionet} from 'genlayer-js/chains';
 import {safeJson,errorText} from './format';
+import {diagnoseReadError,ReadCoordinator,ReadRequestError,type ReadDiagnostic} from './readCoordinator';
 export const CONTRACT=(import.meta.env.VITE_CLAUSEBID_ADDRESS||'').trim();
 export const CHAIN_ID=61999;
 export type Eip1193Provider={
@@ -23,21 +24,37 @@ const asAddr=()=>{if(!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT))throw new Error('VITE
 const provider=()=>{if(!window.ethereum)throw new Error('Install or enable an injected EIP-1193 wallet.');return window.ethereum as Eip1193Provider;};
 const desiredChain=()=>`0x${CHAIN_ID.toString(16)}`;
 const reader:any=createClient({chain:studionet});
-let readBackoffUntil=0;
-const wait=(milliseconds:number)=>new Promise<void>(resolve=>setTimeout(resolve,milliseconds));
-function retryAfterSeconds(value:unknown):number{
- const candidate=value as any;
- const direct=Number(candidate?.cause?.data?.retry_after_seconds??candidate?.data?.retry_after_seconds);
- if(Number.isFinite(direct)&&direct>0)return direct;
- const text=[candidate?.message,candidate?.details,candidate?.shortMessage,candidate?.cause?.message,candidate?.cause?.details].filter(Boolean).join(' ');
- const match=text.match(/retry_after_seconds[^0-9]*(\d+)/i);
- return match?Number(match[1]):0;
+const CACHE_TTL=5000;
+const CACHE_STORAGE='clausebid:confirmed:'+CHAIN_ID+':'+CONTRACT.toLowerCase();
+type CacheEntry={value:any;confirmedAt:number;expiresAt:number};
+export type ReadResult<T=any>={value:T;source:'live'|'cache';confirmedAt:number;warning?:ReadDiagnostic};
+export type ReadOptions={force?:boolean;cacheTtlMs?:number};
+const memoryCache=new Map<string,CacheEntry>();
+let diagnostics:ReadDiagnostic[]=[];
+const encode=(value:any)=>JSON.stringify(value,(_,item)=>typeof item==='bigint'?'__clausebid_bigint__'+item:item);
+const decode=(value:string)=>JSON.parse(value,(_,item)=>typeof item==='string'&&item.startsWith('__clausebid_bigint__')?BigInt(item.slice(20)):item);
+const cacheKey=(functionName:string,args:unknown[])=>JSON.stringify([CONTRACT.toLowerCase(),CHAIN_ID,functionName,args],(_,value)=>typeof value==='bigint'?String(value):value);
+function loadPersistentCache():Record<string,CacheEntry>{
+ try{return decode(sessionStorage.getItem(CACHE_STORAGE)||'{}') as Record<string,CacheEntry>}catch{return {}}
 }
-function isTransientReadError(value:unknown):boolean{
- const candidate=value as any;
- const text=[candidate?.message,candidate?.details,candidate?.shortMessage,candidate?.cause?.message,candidate?.cause?.details].filter(Boolean).join(' ');
- return /failed to fetch|fetch failed|networkerror|load failed/i.test(text);
+function getCached(key:string):CacheEntry|undefined{
+ const memory=memoryCache.get(key);if(memory)return memory;
+ const persistent=loadPersistentCache();const entry=persistent[key];if(entry){memoryCache.set(key,entry);return entry}
+ return undefined;
 }
+function setCached(key:string,value:any,ttl:number){
+ const entry={value,confirmedAt:Date.now(),expiresAt:Date.now()+ttl};memoryCache.set(key,entry);
+ try{const persistent=loadPersistentCache();persistent[key]=entry;const keys=Object.keys(persistent);for(const old of keys.slice(0,Math.max(0,keys.length-100)))delete persistent[old];sessionStorage.setItem(CACHE_STORAGE,encode(persistent))}catch{}
+}
+export function invalidateReadCache(){
+ memoryCache.clear();try{sessionStorage.removeItem(CACHE_STORAGE)}catch{}
+}
+function recordDiagnostic(diagnostic:ReadDiagnostic){
+ diagnostics=[diagnostic,...diagnostics].slice(0,30);
+ try{sessionStorage.setItem(CACHE_STORAGE+':diagnostics',encode(diagnostics))}catch{}
+}
+export function readDiagnostics():ReadDiagnostic[]{return diagnostics.slice()}
+const coordinator=new ReadCoordinator({concurrency:3,maxRetries:2,baseDelayMs:750,maxDelayMs:30000,onDiagnostic:recordDiagnostic});
 export function decodeContractValue(raw:any):any {
   if(raw instanceof Map)return Object.fromEntries(Array.from(raw.entries(),([k,v])=>[String(k),decodeContractValue(v)]));
   if(Array.isArray(raw))return raw.map(decodeContractValue);
@@ -45,18 +62,21 @@ export function decodeContractValue(raw:any):any {
     return Object.fromEntries(Object.entries(raw).map(([k,v])=>[k,decodeContractValue(v)]));
   return raw;
 }
-export async function read(functionName:string,args:unknown[]=[]):Promise<any>{
-  const initialWait=Math.max(0,readBackoffUntil-Date.now());
-  if(initialWait)await wait(initialWait);
-  try{return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));}
- catch(error){
-   const retry=retryAfterSeconds(error);
-   const transient=isTransientReadError(error);
-   if((!retry&&!transient)||retry>120)throw error;
-   readBackoffUntil=Math.max(readBackoffUntil,Date.now()+(retry?retry*1000:2500));
-   await wait(Math.max(0,readBackoffUntil-Date.now()));
-   return decodeContractValue(await reader.readContract({address:asAddr(),functionName,args}));
+export async function readDetailed(functionName:string,args:unknown[]=[],options:ReadOptions={}):Promise<ReadResult>{
+ const key=cacheKey(functionName,args);const cached=getCached(key);
+ if(!options.force&&cached&&cached.expiresAt>Date.now())return {value:cached.value,source:'cache',confirmedAt:cached.confirmedAt};
+ try{
+  const raw=await coordinator.request(key,functionName,()=>reader.readContract({address:asAddr(),functionName,args}));
+  const value=decodeContractValue(raw);setCached(key,value,options.cacheTtlMs??CACHE_TTL);
+  return {value,source:'live',confirmedAt:Date.now()};
+ }catch(error){
+  const diagnostic=error instanceof ReadRequestError?error.diagnostic:diagnoseReadError(functionName,error,1);recordDiagnostic(diagnostic);
+  if(cached)return {value:cached.value,source:'cache',confirmedAt:cached.confirmedAt,warning:diagnostic};
+  throw error;
  }
+}
+export async function read(functionName:string,args:unknown[]=[],options:ReadOptions={}):Promise<any>{
+ return (await readDetailed(functionName,args,options)).value;
 }
 export async function connectWallet():Promise<string>{
   const p=provider();
@@ -110,17 +130,18 @@ export async function write(account:string,w:Write,onChange?:(s:string)=>void):P
   onChange?.('Submitted '+hash+'. Waiting for actual GenLayer finalization');
   try{
     const receipt=await client.waitForTransactionReceipt({hash,status:'FINALIZED',interval:3000,retries:120});
-    const success=isSuccessful(receipt);
+  const success=isSuccessful(receipt);
     track({hash,action:w.functionName,phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(receipt).slice(0,2000)});
     if(!success)throw new Error('Finalized transaction did not execute successfully: '+hash);
   }catch(error){
     track({hash,action:w.functionName,phase:'inspect-finality',timestamp:Date.now(),detail:errorText(error)});
     throw new Error('Transaction '+hash+' requires inspection. Do NOT resubmit blindly. '+errorText(error));
   }
+  invalidateReadCache();
   return hash;
 }
 export async function refreshTx(hash:string):Promise<void>{
-  const result:any=await reader.waitForTransactionReceipt({hash,status:'FINALIZED',interval:3000,retries:120});
+  const result:any=await coordinator.request('receipt:'+hash,'transaction_receipt',()=>reader.waitForTransactionReceipt({hash,status:'FINALIZED',interval:3000,retries:120}));
   const success=isSuccessful(result);
   const old=tracked().find(t=>t.hash===hash);
   track({hash,action:old?.action||'unknown',phase:success?'finalized-success':'finalized-failed',timestamp:Date.now(),detail:safeJson(result).slice(0,2000)});

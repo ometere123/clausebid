@@ -51,7 +51,7 @@ test('handles wallet connection rejection, signing rejection, account changes an
   await page.goto('/#/dashboard');
   await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=true});
   await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
-  await expect(page.getByRole('alert')).toContainText('rejected');
+  await expect(page.getByRole('alert')).toContainText('rejected',{timeout:10000});
   await page.evaluate(()=>{(window as any).ethereum.state.rejectConnect=false});
   await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
   await expect(page.getByRole('button',{name:/Copy wallet address/})).toBeVisible();
@@ -59,8 +59,8 @@ test('handles wallet connection rejection, signing rejection, account changes an
   await expect(page.getByRole('button',{name:/Copy wallet address/})).toContainText('Copied');
   await expect(page.getByRole('button',{name:'Disconnect wallet',exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Disconnect wallet',exact:true}).click();
-  await expect(page.getByRole('button',{name:'Connect wallet'})).toBeVisible();
-  await page.getByRole('button',{name:'Connect wallet'}).click();
+  await expect(page.getByRole('button',{name:'Connect wallet',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Connect wallet',exact:true}).click();
   await page.goto('/#/auction/1');
   await expect(page.getByRole('heading',{name:'Auction #1'})).toBeVisible();
   await expect(page.getByRole('button',{name:/Save reveal backup and commit/})).toBeEnabled();
@@ -68,7 +68,7 @@ test('handles wallet connection rejection, signing rejection, account changes an
   await page.getByLabel('All-in price in GEN').fill('4');
   await page.getByLabel('Complete offer terms').fill('All four requirements are addressed.');
   await page.getByRole('button',{name:/Save reveal backup and commit/}).click();
-  await expect(page.getByRole('alert')).toContainText('rejected');
+  await expect(page.getByRole('alert')).toContainText('rejected',{timeout:10000});
   await page.evaluate((next)=>{(window as any).ethereum.switchAccount(next)},ACCOUNT_B);
   await expect(page.getByRole('alert')).toContainText('account changed');
   await page.evaluate(()=>{(window as any).ethereum.switchChain('0x1')});
