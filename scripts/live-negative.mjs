@@ -62,16 +62,16 @@ const addresses=wallets.map(wallet=>wallet.address.toLowerCase());
 const readClient=clients[0];
 let lastRpcAt=0;
 let rpcTail=Promise.resolve();
-async function rpc(label,operation){
+async function rpc(label,operation,{retryRead=false}={}){
  const run=rpcTail.then(async()=>{
-  for(let attempt=0;attempt<8;attempt++){
-   const gap=1500-(Date.now()-lastRpcAt);
+  for(let attempt=0;attempt<(retryRead?8:1);attempt++){
+   const gap=2200-(Date.now()-lastRpcAt);
    if(gap>0)await sleep(gap);
    try{const result=await operation();lastRpcAt=Date.now();return result}
    catch(error){
     lastRpcAt=Date.now();
     const text=String(error)+' '+JSON.stringify(error?.cause??'');
-    if(!/rate limit|retry_after_seconds|-32029|429/i.test(text)||attempt===7)throw error;
+    if(!retryRead||!/rate limit|retry_after_seconds|-32029|429/i.test(text)||attempt===7)throw error;
     const match=text.match(/retry_after_seconds[^0-9]*(\d+)/i);
     const delay=Math.min(60000,Math.max(5000,((match?Number(match[1]):15)+1)*1000));
     console.log('Studionet rate limit while',label,'waiting',delay,'ms');
@@ -135,12 +135,12 @@ function commitment(auction,seller,price,terms,salt){
  const domain=['clausebid/commit/v1',String(CHAIN_ID),DOMAIN_ADDRESS,String(auction),seller.toLowerCase(),String(price),terms,salt];
  return createHash('sha256').update(packed(domain)).digest('hex');
 }
-async function read(method,args=[]){return rpc('read '+method,()=>readClient.readContract({address:ADDRESS,functionName:method,args}));}
+async function read(method,args=[]){return rpc('read '+method,()=>readClient.readContract({address:ADDRESS,functionName:method,args}),{retryRead:true});}
 async function tryRead(method,args=[]){try{return await read(method,args)}catch{return null}}
 async function nativeBalance(address){
- try{return String(await rpc('balance',()=>readClient.getBalance({address})));}catch{}
+ try{return String(await rpc('balance',()=>readClient.getBalance({address}),{retryRead:true}));}catch{}
  try{
-  const result=await rpc('eth_getBalance',()=>readClient.request({method:'eth_getBalance',params:[address,'latest']}));
+  const result=await rpc('eth_getBalance',()=>readClient.request({method:'eth_getBalance',params:[address,'latest']}),{retryRead:true});
   return String(BigInt(result));
  }catch{return null}
 }
@@ -196,14 +196,14 @@ function ensureScenario(name,kind,expected,participants){
 }
 function recordError(item,message){item.errors.push({at:nowIso(),message});state.errors.push({scenario:item.name,at:nowIso(),message});persist();}
 async function transactionDetails(hash,includeTrace=false,includeMessages=false){
- const receipt=await rpc('receipt '+hash,()=>readClient.waitForTransactionReceipt({hash,status:'FINALIZED',interval:8000,retries:120}));
+ const receipt=await rpc('receipt '+hash,()=>readClient.waitForTransactionReceipt({hash,status:'FINALIZED',interval:8000,retries:120}),{retryRead:true});
  let transaction=null,triggered=[];
  if(includeMessages){
-  try{transaction=await rpc('transaction '+hash,()=>readClient.getTransaction({hash}))}catch{}
-  try{triggered=await rpc('triggered '+hash,()=>readClient.getTriggeredTransactionIds({hash}))}catch{}
+  try{transaction=await rpc('transaction '+hash,()=>readClient.getTransaction({hash}),{retryRead:true})}catch{}
+  try{triggered=await rpc('triggered '+hash,()=>readClient.getTriggeredTransactionIds({hash}),{retryRead:true})}catch{}
  }
  let trace=null;
- if(includeTrace){try{trace=await rpc('trace '+hash,()=>readClient.debugTraceTransaction({hash,round:0}))}catch{}}
+ if(includeTrace){try{trace=await rpc('trace '+hash,()=>readClient.debugTraceTransaction({hash,round:0}),{retryRead:true})}catch{}}
  return {receipt,transaction,triggered,trace};
 }
 async function tx(item,key,who,method,args=[],value=0n,expected='SUCCESS'){

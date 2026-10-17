@@ -55,6 +55,25 @@ The driver queues independent wallet submissions during the short commitment win
 
 For local encrypted CLI accounts, set `CLAUSEBID_KEYSTORE_PASSWORD` only in the calling shell and use the default account names (`praest-deployer`, `clausebid-seller-a` through `clausebid-seller-d`). Do not place that password or keystore contents in Git. The five-wallet driver uses real elapsed Studionet time; it does not warp the hosted chain.
 
+The resumable negative-path runner uses the same five encrypted CLI accounts and
+real elapsed time. It persists private salts and full receipts only in the
+ignored `evidence/live-negative.local.json`; the publishable summaries are
+written to `evidence/studionet/live-negative.json`.
+
+```powershell
+$env:CLAUSEBID_CONTRACT_ADDRESS='0x24f95ED58fcfa4e339C504fF388A922347757515'
+$env:CLAUSEBID_KEYSTORE_PASSWORD='set only in this shell'
+node scripts/live-negative.mjs start
+node scripts/live-negative.mjs run
+node scripts/live-negative.mjs status
+```
+
+`run` is safe to resume after interruption. It records finalized parent
+receipts, successful or failed execution, state snapshots, entitlement values,
+and pre/post native-balance reads. It never retries an ambiguous claim or
+outbound value transfer. The runner's hosted results are automated multi-wallet
+Studionet integration testing, not Direct Mode or mocked consensus evidence.
+
 Do not accept a finality flag without execution success. Do not turn timed-out review transactions into automatic approvals. Direct Mode mocks are not external validator evidence. A failed outbound value message does not automatically restore money. There is no privileged administrator rescue path.
 
 ## Time control
