@@ -12,10 +12,10 @@ The source implementation is pinned to the required Studionet toolchain and is e
 
 1. Buyer creates four immutable requirements and reference facts, deposits 5–100 GEN.
 2. Sellers each deposit a refundable 5%-of-budget bond (0.5–5 GEN) and commit a SHA-256 hash binding network, contract, auction, wallet, price, terms and a 32-byte random salt.
-3. After a 10-minute commit period, sellers reveal original bids during a 20-minute reveal period.
-4. For the next 30 minutes, anyone can reserve each revealed bid for review. GenLayer validators independently re-evaluate all four material requirements. A reserved review may finalize after the application cutoff; an unresolved reservation cannot be bypassed until its explicit grace period expires.
+3. At publication the buyer chooses whole-second commitment and reveal durations. Commitment is 600–172800 seconds, reveal is 1200–345600 seconds, and their total is at most 518400 seconds. The contract freezes the schedule with the funded procurement; the buyer cannot change it later. The UI defaults to 24 hours + 48 hours and the minimum 10-minute + 20-minute schedule is available for accelerated Studionet verification.
+4. After the reveal period, anyone can reserve each revealed bid for the procurement-specific eligibility window. GenLayer validators independently re-evaluate all four material requirements. A reserved review may finalize after the application cutoff; an unresolved reservation cannot be bypassed until its explicit per-procurement grace period expires.
 5. After all revealed offers are reviewed, or after the cutoff plus review grace, deterministic code awards the lowest-price COMPLIANT bid. Ties go to the earliest commitment. Unresolved reservations fail closed.
-6. Winner submits public text within 30 minutes. Buyer may accept within 10 minutes; otherwise any keeper can reserve an independent fulfillment review. Two 20-minute corrections are available for material defects. A review reserved before its deadline is protected from expiry races; a stale reservation can be cancelled after grace.
+6. Winner submits public text within the frozen delivery window. Buyer may accept within the frozen response window; otherwise any keeper can reserve an independent fulfillment review. Two corrections are available for material defects within the frozen correction window. A review reserved before its deadline is protected from expiry races; a stale reservation can be cancelled after its per-procurement grace period.
 7. Seller claims successful escrow payment + bond. Losing revealed bidders reclaim bonds; buyer claims unspent budget. Default/no-award/unwind paths allocate liabilities deterministically.
 8. Every claim is single-use. Outbound transfers to EOAs emit on finalization; ambiguous failed transfers **must not** be blindly retried.
 
@@ -93,7 +93,11 @@ Do not accept a finality flag without execution success. Do not turn timed-out r
 
 ## Time control
 
-Application phase durations derive from the single `WINDOW=1800` constant: 10-minute commit, 20-minute reveal and 30-minute review/delivery/recovery. The underlying chain's consensus/appeal/finalization periods are **not controlled by this variable**. A timely reserved review may finalize after its application deadline; expiry and cancellation cannot create a contradictory economic outcome while that reservation remains in flight. Do not change the master window for a deployment with unsettled procurements.
+Each procurement freezes its own schedule at funding. The contract accepts commitment durations from 600 seconds (10 minutes) through 172800 seconds (48 hours), reveal durations from 1200 seconds (20 minutes) through 345600 seconds (96 hours), and a combined total from 1800 seconds through 518400 seconds (144 hours). The frontend defaults to 86400 + 172800 seconds (24 + 48 hours), while the live accelerated runner explicitly selects 600 + 1200 seconds.
+
+From `T = commit_seconds + reveal_seconds`, the contract derives eligibility review, delivery, bid-review grace, delivery review and delivery-review grace as `min(T, 72 hours)`, buyer response as `min(T // 3, 24 hours)`, and each correction as `min((2 * T) // 3, 48 hours)`. Phase deadlines are anchored to the actual on-chain start of that phase: publication, reveal close, award, delivery submission, buyer response/review, or correction decision as applicable. These values are immutable per procurement and are read from `get_procurement`; they are not frontend timers.
+
+The underlying chain's consensus/appeal/finalization periods are not controlled by application durations. A timely reserved review may finalize after its application deadline; expiry and cancellation cannot create a contradictory economic outcome while that reservation remains in flight. Direct Mode uses `vm.warp()` to prove long schedules; hosted Studionet uses real elapsed time.
 
 ## Auditing boundaries
 

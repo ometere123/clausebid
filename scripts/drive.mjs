@@ -56,6 +56,9 @@ const id=()=>{
  return value;
 };
 const U=10n**18n;
+const commitSeconds=Number(process.env.CLAUSEBID_COMMIT_SECONDS??600);
+const revealSeconds=Number(process.env.CLAUSEBID_REVEAL_SECONDS??1200);
+if(!Number.isSafeInteger(commitSeconds)||!Number.isSafeInteger(revealSeconds))throw Error('CLAUSEBID_COMMIT_SECONDS and CLAUSEBID_REVEAL_SECONDS must be whole safe integers');
 const clauses=[
  'Deliver exactly three complete descriptions of approved products.',
  'Each description must state a six-month warranty without contradiction.',
@@ -110,7 +113,7 @@ if(cmd==='attach'){
   console.log('Recovered auction from finalized create:',id());
   process.exit(0);
  }
- await send(0,'create_procurement',['Three product descriptions',reference,...clauses,35n*U],35n*U);
+ await send(0,'create_procurement',['Three product descriptions',reference,...clauses,35n*U,commitSeconds,revealSeconds],35n*U);
  state.auctionId=Number(await read('get_count'));persist();
  console.log('Auction ID:',id());
 }else if(cmd==='commit-all'){

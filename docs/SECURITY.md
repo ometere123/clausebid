@@ -39,16 +39,17 @@ This document records the source audit boundary, enforced invariants, and eviden
 
 ## Live verification gates
 
-- Benchmark 10-minute commitment against Studionet's actual deployment and finalization latency. If the network cannot finalize funded procurement early enough for sellers to commit, the locked short period is not operationally viable; do not conceal or bypass this.
+- Benchmark the selected commitment and reveal schedule against Studionet's actual deployment and finalization latency. The contract accepts 10-minute/20-minute minimums for accelerated testing and 24-hour/48-hour defaults for normal procurement; if a short schedule cannot finalize funded writes before their application phase closes, record the timing evidence and use a longer schedule rather than bypassing the contract.
 - Prove deadline cutoff behavior against queued/stale transactions.
 - Prove all GEN transfer receipts and recipient balance deltas. Studionet is a development simulation, not mainnet economic custody.
 - Verify the deployed GenVM supports the Python storage dataclasses, dictionary output, hashing and custom validator pattern.
 - Profile bid-review validator disagreement and protocol fees for each call.
 
-The current source-verified deployment and the superseded funded-demo deployment
-are both recorded in `evidence/studionet/deployment.json`. The supersession is
-not a reset: the original auction and 42 GEN readbacks remain immutable
-historical evidence, while new procurements must use the replacement address.
+Every deployment record is immutable evidence. When the configurable contract is
+deployed, its manifest must retain the prior `0x24f95...7515` deployment and its
+unsettled obligations as historical provenance; no old procurement or GEN credit
+is migrated automatically. New procurements use only the source-verified
+configurable address.
 
 ## Non-goals
 

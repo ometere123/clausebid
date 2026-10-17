@@ -11,14 +11,19 @@ import hashlib
 import json
 
 GEN = 10 ** 18
-WINDOW = 1800
 CHAIN_ID = 61999
-COMMIT_SECONDS = WINDOW // 3
-REVEAL_SECONDS = WINDOW - COMMIT_SECONDS
-BUYER_RESPONSE = WINDOW // 3
-CORRECTION_SECONDS = WINDOW * 2 // 3
-REVIEW_GRACE_SECONDS = WINDOW
-DELIVERY_REVIEW_GRACE_SECONDS = WINDOW
+MIN_COMMIT_SECONDS = 10 * 60
+DEFAULT_COMMIT_SECONDS = 24 * 60 * 60
+MAX_COMMIT_SECONDS = 48 * 60 * 60
+MIN_REVEAL_SECONDS = 20 * 60
+DEFAULT_REVEAL_SECONDS = 48 * 60 * 60
+MAX_REVEAL_SECONDS = 96 * 60 * 60
+MIN_TOTAL_SECONDS = 30 * 60
+MAX_TOTAL_SECONDS = 144 * 60 * 60
+MAX_REVIEW_SECONDS = 72 * 60 * 60
+MAX_RESPONSE_SECONDS = 24 * 60 * 60
+MAX_CORRECTION_SECONDS = 48 * 60 * 60
+MAX_U64 = 2**64 - 1
 MAX_BIDS = 12
 MIN_BUDGET = 5 * GEN
 MAX_BUDGET = 100 * GEN
@@ -55,6 +60,18 @@ class Procurement:
     winning_price: u256
     deliverable: str
     status: str
+    # Immutable schedule selected by the buyer at publication. These fields
+    # are appended so the record remains safe for any future storage migration.
+    commit_seconds: u64
+    reveal_seconds: u64
+    total_seconds: u64
+    eligibility_seconds: u64
+    delivery_seconds: u64
+    response_seconds: u64
+    correction_seconds: u64
+    review_grace_seconds: u64
+    delivery_review_seconds: u64
+    delivery_review_grace_seconds: u64
 
 @allow_storage
 @dataclass
@@ -126,6 +143,34 @@ class ClauseBid(gl.Contract):
     def _bond_for(self, budget: int) -> int:
         return max(GEN // 2, min(5 * GEN, budget // 20))
 
+    def _deadline(self, start: int, duration: int) -> u64:
+        value = int(start) + int(duration)
+        self._require(value <= MAX_U64, "deadline overflow")
+        return u64(value)
+
+    def _timing(self, commit_seconds: u64, reveal_seconds: u64) -> tuple[int, int, int, int, int, int, int, int, int, int]:
+        commit = int(commit_seconds)
+        reveal = int(reveal_seconds)
+        self._require(MIN_COMMIT_SECONDS <= commit <= MAX_COMMIT_SECONDS,
+                      "commitment duration must be 600-172800 seconds")
+        self._require(MIN_REVEAL_SECONDS <= reveal <= MAX_REVEAL_SECONDS,
+                      "reveal duration must be 1200-345600 seconds")
+        # Validate each component before adding it. This keeps the total
+        # calculation bounded even if an invalid ABI value is supplied.
+        total = commit + reveal
+        self._require(MIN_TOTAL_SECONDS <= total <= MAX_TOTAL_SECONDS,
+                      "total bidding duration must be 1800-518400 seconds")
+        eligibility = min(total, MAX_REVIEW_SECONDS)
+        delivery = min(total, MAX_REVIEW_SECONDS)
+        response = min(total // 3, MAX_RESPONSE_SECONDS)
+        correction = min((2 * total) // 3, MAX_CORRECTION_SECONDS)
+        review_grace = min(total, MAX_REVIEW_SECONDS)
+        delivery_review = min(total, MAX_REVIEW_SECONDS)
+        delivery_review_grace = min(total, MAX_REVIEW_SECONDS)
+        return (commit, reveal, total, eligibility, delivery, response,
+                correction, review_grace, delivery_review,
+                delivery_review_grace)
+
     def _hash(self, auction_id: u64, seller: str, price: u256, terms: str, salt: str) -> str:
         # Length-prefixed UTF-8 body avoids ambiguity when terms contain delimiters.
         domain = [
@@ -149,7 +194,8 @@ class ClauseBid(gl.Contract):
     @gl.public.write.payable
     def create_procurement(self, title: str, reference: str,
                            r1: str, r2: str, r3: str, r4: str,
-                           budget_wei: u256) -> u64:
+                           budget_wei: u256, commit_seconds: u64,
+                           reveal_seconds: u64) -> u64:
         self._require_network()
         self._check_text(title, 100)
         self._check_text(reference, 2000)
@@ -158,21 +204,33 @@ class ClauseBid(gl.Contract):
         amount = int(budget_wei)
         self._require(MIN_BUDGET <= amount <= MAX_BUDGET, "budget must be 5-100 GEN")
         self._require(gl.message.value == budget_wei, "deposit must equal budget")
+        timing = self._timing(commit_seconds, reveal_seconds)
+        (commit, reveal, total, eligibility, delivery, response, correction,
+         review_grace, delivery_review, delivery_review_grace) = timing
         now = self._now()
         auction_id = self.next_id
         self.next_id = u64(int(self.next_id) + 1)
+        commit_end = self._deadline(now, commit)
+        reveal_end = self._deadline(int(commit_end), reveal)
         self.procurements[str(int(auction_id))] = Procurement(
             buyer=self._sender(), title=title, reference=reference,
             r1=r1, r2=r2, r3=r3, r4=r4,
             budget=budget_wei, bond=u256(self._bond_for(amount)),
-            commit_end=u64(now + COMMIT_SECONDS),
-            reveal_end=u64(now + COMMIT_SECONDS + REVEAL_SECONDS),
-            review_end=u64(now + COMMIT_SECONDS + REVEAL_SECONDS + WINDOW),
+            commit_end=commit_end,
+            reveal_end=reveal_end,
+            review_end=self._deadline(int(reveal_end), eligibility),
             delivery_due=u64(0), response_due=u64(0),
             delivery_review_end=u64(0), delivery_review_started=u64(0),
             bidder_count=u32(0),
             delivery_attempts=u32(0), winner="", winning_price=u256(0),
             deliverable="", status="BIDDING",
+            commit_seconds=u64(commit), reveal_seconds=u64(reveal),
+            total_seconds=u64(total), eligibility_seconds=u64(eligibility),
+            delivery_seconds=u64(delivery), response_seconds=u64(response),
+            correction_seconds=u64(correction),
+            review_grace_seconds=u64(review_grace),
+            delivery_review_seconds=u64(delivery_review),
+            delivery_review_grace_seconds=u64(delivery_review_grace),
         )
         self.outstanding += budget_wei
         return auction_id
@@ -242,7 +300,7 @@ class ClauseBid(gl.Contract):
         a = self._auction(auction_id)
         now = self._now()
         self._require(a.status == "BIDDING" and
-                      now >= int(a.review_end) + REVIEW_GRACE_SECONDS,
+                      now >= int(a.review_end) + int(a.review_grace_seconds),
                       "review cancellation not available")
         key = self._key(auction_id, seller)
         self._require(key in self.offers, "unknown bidder")
@@ -371,7 +429,7 @@ class ClauseBid(gl.Contract):
         a.winner = best
         a.winning_price = u256(best_price)
         self._credit(a.buyer,u256(int(a.budget)-best_price))
-        a.delivery_due = u64(self._now() + WINDOW)
+        a.delivery_due = self._deadline(self._now(), int(a.delivery_seconds))
         a.status = "AWARDED"
         return best
 
@@ -387,8 +445,11 @@ class ClauseBid(gl.Contract):
         a.deliverable = content
         a.delivery_attempts = u32(int(a.delivery_attempts) + 1)
         self.delivery_history[self._delivery_key(auction_id,int(a.delivery_attempts))] = content
-        a.response_due = u64(self._now() + BUYER_RESPONSE)
-        a.delivery_review_end = u64(self._now() + BUYER_RESPONSE + WINDOW)
+        now = self._now()
+        a.response_due = self._deadline(now, int(a.response_seconds))
+        a.delivery_review_end = self._deadline(
+            int(a.response_due), int(a.delivery_review_seconds)
+        )
         a.delivery_review_started = u64(0)
         a.status = "AWAITING_BUYER"
 
@@ -457,7 +518,7 @@ class ClauseBid(gl.Contract):
                 self._settle_default(a)
                 return "DEFAULT"
             a.status = "CORRECTION"
-            a.delivery_due = u64(self._now() + CORRECTION_SECONDS)
+            a.delivery_due = self._deadline(self._now(), int(a.correction_seconds))
             return "CORRECTION"
         # Inconclusive material judgment: neutral unwind.
         self._settle_unwind(a)
@@ -472,7 +533,7 @@ class ClauseBid(gl.Contract):
             self._settle_default(a)
             return "DEFAULT"
         if a.status == "REVIEWING_DELIVERY":
-            self._require(now >= int(a.delivery_review_end) + DELIVERY_REVIEW_GRACE_SECONDS,
+            self._require(now >= int(a.delivery_review_end) + int(a.delivery_review_grace_seconds),
                           "review still in flight")
             self.delivery_verdicts[self._delivery_key(auction_id,int(a.delivery_attempts))] = "REVIEW_CANCELLED_AFTER_GRACE"
             self._settle_unwind(a)

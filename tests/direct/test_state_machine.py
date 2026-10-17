@@ -20,7 +20,7 @@ def _addr(account):
     return str(account).lower()
 
 
-def _create(vm, deploy, buyer, budget=20 * GEN):
+def _create(vm, deploy, buyer, budget=20 * GEN, commit_seconds=600, reveal_seconds=1200):
     vm._chain_id = 61999
     vm.warp(T0)
     contract = deploy("contracts/clausebid.py")
@@ -34,6 +34,8 @@ def _create(vm, deploy, buyer, budget=20 * GEN):
         "Include an SEO title for every description.",
         "All required components are included in the all-in price.",
         budget,
+        commit_seconds,
+        reveal_seconds,
     )
     vm.value = 0
     return contract, int(auction_id)
@@ -87,11 +89,11 @@ def test_create_requires_exact_funding_and_freezes_four_clauses(direct_vm, direc
     with direct_vm.expect_revert("deposit must equal budget"):
         direct_vm.value = 19 * GEN
         contract.create_procurement(
-            "Title", "Reference", "R1", "R2", "R3", "R4", 20 * GEN
+            "Title", "Reference", "R1", "R2", "R3", "R4", 20 * GEN, 600, 1200
         )
     direct_vm.value = 20 * GEN
     auction_id = contract.create_procurement(
-        "Title", "Reference", "R1", "R2", "R3", "R4", 20 * GEN
+        "Title", "Reference", "R1", "R2", "R3", "R4", 20 * GEN, 600, 1200
     )
     row = contract.get_procurement(auction_id)
     assert row.title == "Title"
@@ -105,7 +107,7 @@ def test_writes_reject_non_studionet_domain(direct_vm, direct_deploy, direct_ali
     direct_vm._chain_id = 61997
     direct_vm.value = 20 * GEN
     with direct_vm.expect_revert("wrong network"):
-        contract.create_procurement("Title", "Reference", "R1", "R2", "R3", "R4", 20 * GEN)
+        contract.create_procurement("Title", "Reference", "R1", "R2", "R3", "R4", 20 * GEN, 600, 1200)
 
 
 def test_wrong_bond_duplicate_and_slot_limit(direct_vm, direct_deploy, direct_alice, direct_bob, direct_charlie, direct_owner, direct_accounts):

@@ -52,6 +52,18 @@ test('navigates all seven screens and preserves mobile navigation',async({page})
     }
     if(label==='Create'){
       await expect(page.getByRole('button',{name:'Fund and publish procurement'})).toBeVisible();
+      const commitField=page.locator('label.field').filter({hasText:'Commitment duration'});
+      const revealField=page.locator('label.field').filter({hasText:'Reveal duration'});
+      await expect(commitField.locator('input')).toHaveValue('1');
+      await expect(revealField.locator('input')).toHaveValue('2');
+      await expect(page.getByText('Total bidding')).toBeVisible();
+      await commitField.locator('input').fill('49');
+      await expect(page.getByRole('button',{name:'Fund and publish procurement'})).toBeDisabled();
+      await commitField.locator('input').fill('24');
+      await commitField.locator('select').selectOption('hours');
+      await revealField.locator('input').fill('48');
+      await revealField.locator('select').selectOption('hours');
+      await expect(page.getByRole('strong').filter({hasText:'3 days'}).first()).toBeVisible();
       await expect(page.getByText(/read failed|failed to fetch version/i)).toHaveCount(0);
     }
   }

@@ -29,8 +29,9 @@ const CHAIN_ID=61999;
 const DOMAIN_ADDRESS=ADDRESS.toLowerCase();
 const U=10n**18n;
 const GEN=U;
-const WINDOW=1800;
-const REVIEW_GRACE=1800;
+const COMMIT_SECONDS=Number(process.env.CLAUSEBID_COMMIT_SECONDS??600);
+const REVEAL_SECONDS=Number(process.env.CLAUSEBID_REVEAL_SECONDS??1200);
+if(!Number.isSafeInteger(COMMIT_SECONDS)||!Number.isSafeInteger(REVEAL_SECONDS))throw Error('CLAUSEBID_COMMIT_SECONDS and CLAUSEBID_REVEAL_SECONDS must be whole safe integers');
 const KEYS=['BUYER_PRIVATE_KEY','SELLER_A_PRIVATE_KEY','SELLER_B_PRIVATE_KEY','SELLER_C_PRIVATE_KEY','SELLER_D_PRIVATE_KEY'];
 const ACCOUNT_NAMES=['CLAUSEBID_BUYER_ACCOUNT','CLAUSEBID_SELLER_A_ACCOUNT','CLAUSEBID_SELLER_B_ACCOUNT','CLAUSEBID_SELLER_C_ACCOUNT','CLAUSEBID_SELLER_D_ACCOUNT'];
 const DEFAULT_ACCOUNTS=['praest-deployer','clausebid-seller-a','clausebid-seller-b','clausebid-seller-c','clausebid-seller-d'];
@@ -38,7 +39,7 @@ const keystoreDir=process.env.CLAUSEBID_KEYSTORE_DIR ?? path.join(process.env.US
 const password=process.env.CLAUSEBID_KEYSTORE_PASSWORD;
 const LOCAL_FILE=process.env.CLAUSEBID_NEGATIVE_STATE ?? 'evidence/live-negative.local.json';
 const PUBLIC_FILE=process.env.CLAUSEBID_NEGATIVE_EVIDENCE ?? 'evidence/studionet/live-negative.json';
-const SOURCE_SHA='18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4';
+const SOURCE_SHA=createHash('sha256').update(fs.readFileSync(path.join(process.cwd(),'contracts','clausebid.py'))).digest('hex');
 
 async function loadAccount(index){
  const key=process.env[KEYS[index]];
@@ -224,22 +225,14 @@ async function transactionDetails(hash,includeTrace=false,includeMessages=false)
  if(includeTrace){try{trace=await rpc('trace '+hash,()=>readClient.debugTraceTransaction({hash,round:0}),{retryRead:true})}catch{}}
  return {receipt,transaction,triggered,trace};
 }
-async function tx(item,key,who,method,args=[],value=0n,expected='SUCCESS'){
+async function submitWrite(item,key,who,method,args=[],value=0n,expected='SUCCESS'){
  const existingKey=item.transactionKeys[key];
  if(existingKey){
   const existing=state.transactions[existingKey];
-  if(existing?.finalizedAt)return existing;
   if(existing?.observed==='SUBMISSION_ERROR'||(existing&&!existing.hash)){
    throw Error('Submission outcome unavailable for '+method+'; the persisted write has no finalized receipt. Inspect the provider before any manual retry.');
   }
-  if(existing?.hash){
-   const details=await transactionDetails(existing.hash,expected==='FAILURE',existing.method==='claim');
-   existing.finalizedAt=nowIso();existing.receipt=receiptSummary(details.receipt,details.transaction,details.triggered);existing.trace=details.trace??null;
-   existing.observed=hasSuccess(details.receipt)?'SUCCESS':'FAILURE';persist();
-   if(expected==='SUCCESS'&&existing.observed!=='SUCCESS')throw Error('Previously submitted transaction finalized unsuccessfully: '+existing.hash);
-   if(expected==='FAILURE'&&existing.observed==='SUCCESS')throw Error('Expected failure unexpectedly succeeded: '+existing.hash);
-   return existing;
-  }
+  if(existing?.hash)return existing;
  }
  const txKey=item.name+':'+key;
  const entry={key:txKey,wallet:names[who],address:addresses[who],method,expected,submittedAt:nowIso(),hash:null,finalizedAt:null,observed:null,receipt:null,error:null};
@@ -247,11 +240,23 @@ async function tx(item,key,who,method,args=[],value=0n,expected='SUCCESS'){
  let hash;
  try{hash=await rpc('write '+method,()=>clients[who].writeContract({address:ADDRESS,functionName:method,args,value}));entry.hash=hash;persist()}
  catch(error){entry.error=String(error);entry.observed='SUBMISSION_ERROR';persist();throw Error('Submission outcome unavailable for '+method+': '+String(error))}
- const details=await transactionDetails(hash,expected==='FAILURE',method==='claim');
- entry.finalizedAt=nowIso();entry.receipt=receiptSummary(details.receipt,details.transaction,details.triggered);entry.trace=details.trace??null;entry.observed=hasSuccess(details.receipt)?'SUCCESS':'FAILURE';persist();
- if(expected==='SUCCESS'&&entry.observed!=='SUCCESS')throw Error('Finalized but failed: '+hash);
- if(expected==='FAILURE'&&entry.observed==='SUCCESS')throw Error('Expected failure unexpectedly succeeded: '+hash);
  return entry;
+}
+async function finalizeWrite(item,key,expected='SUCCESS'){
+ const entry=state.transactions[item.transactionKeys[key]];
+ if(!entry?.hash)throw Error('Cannot finalize a write without a persisted hash: '+key);
+ if(!entry.finalizedAt){
+  const details=await transactionDetails(entry.hash,expected==='FAILURE',entry.method==='claim');
+  entry.finalizedAt=nowIso();entry.receipt=receiptSummary(details.receipt,details.transaction,details.triggered);entry.trace=details.trace??null;
+  entry.observed=hasSuccess(details.receipt)?'SUCCESS':'FAILURE';persist();
+ }
+ if(expected==='SUCCESS'&&entry.observed!=='SUCCESS')throw Error('Previously submitted transaction finalized unsuccessfully: '+entry.hash);
+ if(expected==='FAILURE'&&entry.observed==='SUCCESS')throw Error('Expected failure unexpectedly succeeded: '+entry.hash);
+ return entry;
+}
+async function tx(item,key,who,method,args=[],value=0n,expected='SUCCESS'){
+ await submitWrite(item,key,who,method,args,value,expected);
+ return finalizeWrite(item,key,expected);
 }
 async function markState(item,label,includeBalances=false){
  const snapshot=await compactState(item,includeBalances);
@@ -273,7 +278,7 @@ async function claim(item,who,label){
 async function createAuction(item){
  if(item.auctionId)return;
  if(!item.before)item.before=await economySnapshot(item,false,[addresses[0]]);
- const result=await tx(item,'create',0,'create_procurement',[item.title,reference,...clauses,5n*U],5n*U,'SUCCESS');
+  const result=await tx(item,'create',0,'create_procurement',[item.title,reference,...clauses,5n*U,COMMIT_SECONDS,REVEAL_SECONDS],5n*U,'SUCCESS');
  item.auctionId=Number(await read('get_count'));item.buyer=addresses[0];
  item.deadlines=await read('get_procurement',[item.auctionId]);
  await markState(item,'after',false);persist();
@@ -287,12 +292,13 @@ async function commit(item,who,price,terms){
  }
  if(!item.commitTransaction){
   const procurement=await read('get_procurement',[item.auctionId]);
-  const result=await tx(item,'commit',item.commit.who,'commit_bid',[item.auctionId,item.commit.digest],BigInt(procurement.bond),'SUCCESS');
+  const result=await submitWrite(item,'commit',item.commit.who,'commit_bid',[item.auctionId,item.commit.digest],BigInt(procurement.bond),'SUCCESS');
   item.participants={...(item.participants??{}),seller:item.commit.seller};item.commitTransaction=result.hash;persist();
  }
 }
 async function reveal(item){
  if(item.kind==='unrevealed'||item.revealTransaction)return;
+ await finalizeWrite(item,'commit','SUCCESS');
  const row=item.commit;const result=await tx(item,'reveal',row.who,'reveal_bid',[item.auctionId,BigInt(row.priceWei),row.terms,row.salt],0n,'SUCCESS');
  item.revealTransaction=result.hash;persist();
 }
@@ -354,7 +360,7 @@ function deadlinePassed(row,field,extra=0){return Math.floor(Date.now()/1000)>=N
 const hasReveal=(item)=>Boolean(item.revealTransaction||item.reveal);
 async function progressUnrevealed(item){
  const row=await read('get_procurement',[item.auctionId]);
- if(!item.finalize&&deadlinePassed(row,'reveal_end')){await markState(item,'before',false);item.finalize=(await tx(item,'finalize',4,'finalize_award',[item.auctionId],0n,'SUCCESS')).hash;persist()}
+ if(!item.finalize&&deadlinePassed(row,'reveal_end')){await finalizeWrite(item,'commit','SUCCESS');await markState(item,'before',false);item.finalize=(await tx(item,'finalize',4,'finalize_award',[item.auctionId],0n,'SUCCESS')).hash;persist()}
  if(item.finalize&&!item.unauthorized){await expectedFailure(item,'unauthorized',1,'claim');item.unauthorized=true;persist()}
  if(item.finalize&&!item.buyerClaim){const result=await claim(item,0,'buyer-claim');item.buyerClaim=result?.hash??null;persist()}
  if(item.buyerClaim&&!item.duplicate){await expectedFailure(item,'duplicate',0,'claim');item.duplicate=true;await setTerminal(item,'PASS','NO_AWARD_BOND_FORFEITURE_AND_SINGLE_USE_CLAIM');}
@@ -448,7 +454,8 @@ async function progressReservedStale(item){
  const row=await read('get_procurement',[item.auctionId]);
  if(!hasReveal(item)&&deadlinePassed(row,'commit_end'))await reveal(item);
  if(!item.reviewReservation&&hasReveal(item)&&deadlinePassed(row,'reveal_end'))await ensureReview(item);
- if(!item.cancel&&item.reviewReservation&&deadlinePassed(row,'review_end',REVIEW_GRACE+5)){
+ const reviewGrace=Number(row.review_grace_seconds??(COMMIT_SECONDS+REVEAL_SECONDS));
+ if(!item.cancel&&item.reviewReservation&&deadlinePassed(row,'review_end',reviewGrace+5)){
   await markState(item,'before',false);const result=await tx(item,'cancel',4,'cancel_bid_review',[item.auctionId,item.commit.seller],0n,'SUCCESS');item.cancel=result.hash;persist()
  }
  if(item.cancel&&!item.finalize){const result=await tx(item,'finalize',4,'finalize_award',[item.auctionId],0n,'SUCCESS');item.finalize=result.hash;persist()}
@@ -529,16 +536,30 @@ const specs=[
  {name:'correction-default-compliant-live2',kind:'correction-default',title:'Live negative correction exhaustion second batch',expected:'Two correction opportunities fail and seller defaults with buyer recovery',who:4,price:2n,terms:compliantTerms},
  {name:'uncertain-unwind-compliant-live2',kind:'uncertain',title:'Live negative uncertain delivery second batch',expected:'Uncertain delivery produces a neutral unwind',who:1,price:2n,terms:compliantTerms},
 ];
+const requestedScenarioNames=process.env.CLAUSEBID_SCENARIOS?.split(',').map(value=>value.trim()).filter(Boolean);
+const selectedSpecs=requestedScenarioNames?.length
+ ? specs.filter(spec=>requestedScenarioNames.includes(spec.name))
+ : specs;
+if(requestedScenarioNames?.length&&selectedSpecs.length!==requestedScenarioNames.length){
+ const known=new Set(selectedSpecs.map(spec=>spec.name));
+ throw Error('Unknown CLAUSEBID_SCENARIOS value(s): '+requestedScenarioNames.filter(name=>!known.has(name)).join(', '));
+}
 async function start(){
  if(!state.startedAt)state.startedAt=nowIso();
- for(const spec of specs){
+ for(const spec of selectedSpecs){
   const item=ensureScenario(spec.name,spec.kind,spec.expected,{seller:addresses[spec.who],wallet:names[spec.who]});
   item.title=spec.title;item.specWho=spec.who;item.specPrice=String(spec.price);item.specTerms=spec.terms;
   if(!item.auctionId)await createAuction(item);
-  if(!item.commit)await commit(item,spec.who,spec.price,spec.terms);
   persist();
  }
- console.log('Started',specs.length,'CLI negative scenarios. Run `run` to progress by on-chain deadlines.');
+ // Commitments are submitted without waiting for each long consensus receipt.
+ // Their hashes are persisted immediately; reveal/finalization verifies each
+ // exact parent before any dependent write is sent.
+ await Promise.all(selectedSpecs.map(async spec=>{
+  const item=scenario(spec.name);
+  if(!item.commit)await commit(item,spec.who,spec.price,spec.terms);
+ }));
+ console.log('Started',selectedSpecs.length,'CLI negative scenarios with timely persisted commitments. Run `run` to progress by on-chain deadlines.');
 }
 async function status(){
  for(const item of Object.values(state.scenarios)){
@@ -559,7 +580,7 @@ function nextWakeSeconds(item){
  if(!item.reviewReservation)return until(row.reveal_end);
  if(!item.evaluation){
   if(item.kind==='reserved-timely')return until(row.review_end,5);
-  if(item.kind==='reserved-stale')return until(row.review_end,REVIEW_GRACE+5);
+  if(item.kind==='reserved-stale')return until(row.review_end,Number(row.review_grace_seconds??(COMMIT_SECONDS+REVEAL_SECONDS))+5);
   return 1;
  }
  if(!item.award&&item.bidVerdict?.verdict==='COMPLIANT')return 1;
@@ -573,13 +594,13 @@ function nextWakeSeconds(item){
   return item.accept?1:until(row.review_end,5);
  }
  if(item.kind==='reserved-stale'){
-  if(!item.cancel)return until(row.review_end,REVIEW_GRACE+5);
+  if(!item.cancel)return until(row.review_end,Number(row.review_grace_seconds??(COMMIT_SECONDS+REVEAL_SECONDS))+5);
   return 1;
  }
  return 30;
 }
 async function run(){
- if(!state.startedAt||Object.keys(state.scenarios).length<specs.length)await start();
+ if(!state.startedAt||selectedSpecs.some(spec=>!state.scenarios[spec.name]))await start();
  reviveConsensusDisagreements();
  for(const item of Object.values(state.scenarios)){
   try{await recoverMissedReview(item)}catch(error){recordError(item,String(error));console.log('RECOVERY BLOCKED',item.name,String(error))}
