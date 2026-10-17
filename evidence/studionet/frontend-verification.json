@@ -1,18 +1,22 @@
 {
-  "verifiedAt": "2026-10-17T03:04:22Z",
-  "repositoryCommit": "a58429367c28a0bd32ee0404ce7dac7b6a030356",
+  "verifiedAt": "2026-10-17T06:06:55Z",
+  "repositoryCommit": "49e4debaf417bc8090d5964f1d997f299f78f3c9",
   "productionUrl": "https://clausebid.vercel.app",
   "vercel": {
-    "deploymentId": "dpl_GYjSFTF6ra1Raw44VRTNWBtL6YVB",
+    "deploymentId": "dpl_CAfgahRzHw59UyvZ3oJxuX5Ucpem",
     "deploymentUrl": "https://clausebid.vercel.app",
     "readyState": "READY",
     "nodeRuntime": "22.x",
     "verification": {
       "method": "Automatic GitHub-connected production deployment; no separate Vercel deployment was issued",
-      "observedAt": "2026-10-17T03:04:22Z",
+      "observedAt": "2026-10-17T06:06:55Z",
       "httpStatus": 200,
       "server": "Vercel",
-      "lastModified": "2026-10-17T03:04:22Z",
+      "lastModified": "2026-10-17T06:04:59Z",
+      "deploymentGitSha": "49e4debaf417bc8090d5964f1d997f299f78f3c9",
+      "deploymentGitRef": "main",
+      "deploymentState": "READY",
+      "deploymentTarget": "production",
       "deploymentIdNote": "The Git-connected production deployment exposed its immutable deployment ID and Git SHA through the Vercel API; no separate deployment command was issued."
     }
   },
