@@ -24,6 +24,12 @@ const asAddr=()=>{if(!/^0x[0-9a-fA-F]{40}$/.test(CONTRACT))throw new Error('VITE
 const provider=()=>{if(!window.ethereum)throw new Error('Install or enable an injected EIP-1193 wallet.');return window.ethereum as Eip1193Provider;};
 const desiredChain=()=>`0x${CHAIN_ID.toString(16)}`;
 const reader:any=createClient({chain:studionet});
+const READ_TIMEOUT_MS=8000;
+async function readContractWithTimeout(request:()=>Promise<unknown>):Promise<unknown>{
+ let timer:ReturnType<typeof setTimeout>|undefined;
+ try{return await Promise.race([request(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'})),READ_TIMEOUT_MS)})])}
+ finally{if(timer)clearTimeout(timer)}
+}
 const CACHE_TTL=5000;
 const CACHE_STORAGE='clausebid:confirmed:'+CHAIN_ID+':'+CONTRACT.toLowerCase();
 type CacheEntry={value:any;confirmedAt:number;expiresAt:number};
@@ -66,7 +72,7 @@ export async function readDetailed(functionName:string,args:unknown[]=[],options
  const key=cacheKey(functionName,args);const cached=getCached(key);
  if(!options.force&&cached&&cached.expiresAt>Date.now())return {value:cached.value,source:'cache',confirmedAt:cached.confirmedAt};
  try{
-  const raw=await coordinator.request(key,functionName,()=>reader.readContract({address:asAddr(),functionName,args}));
+  const raw=await coordinator.request(key,functionName,()=>readContractWithTimeout(()=>reader.readContract({address:asAddr(),functionName,args})));
   const value=decodeContractValue(raw);setCached(key,value,options.cacheTtlMs??CACHE_TTL);
   return {value,source:'live',confirmedAt:Date.now()};
  }catch(error){

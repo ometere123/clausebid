@@ -63,7 +63,7 @@ export function diagnoseReadError(contractMethod:string,error:unknown,attempts:n
   const httpStatus=findNumber(error,['status','statusCode','httpStatus']);
   const retry=findNumber(error,['retry_after_seconds','retryAfterSeconds'])??retryAfterSeconds;
   const rate=code===-32029||httpStatus===429||/rate limit|too many requests|\b429\b|retry_after_seconds/i.test(text);
-  const provider=httpStatus===408||httpStatus===502||httpStatus===503||httpStatus===504||/failed to fetch|fetch failed|networkerror|load failed|\b503\b|\b502\b|\b504\b/i.test(text);
+  const provider=httpStatus===408||httpStatus===502||httpStatus===503||httpStatus===504||/failed to fetch|fetch failed|networkerror|load failed|timed out|timeout|etimedout|\b503\b|\b502\b|\b504\b/i.test(text);
   const contract=/execution reverted|revert|invalid argument|invalid params|method not found|contract error/i.test(text);
   return {rpcMethod:'gen_call',contractMethod,kind:rate?'rate-limit':provider?'provider-unavailable':contract?'contract-error':'unknown',code,httpStatus,retryAfterSeconds:retry,attempts,message:sanitize(text||'Studionet read failed')};
 }
