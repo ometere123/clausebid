@@ -277,8 +277,21 @@ async function claim(item,who,label){
 }
 async function createAuction(item){
  if(item.auctionId)return;
+ const priorCreate=item.transactionKeys?.create?state.transactions[item.transactionKeys.create]:null;
+ if(priorCreate?.hash){
+  await finalizeWrite(item,'create','SUCCESS');
+  const count=Number(await read('get_count'));
+  for(let candidate=count;candidate>=1;candidate--){
+   const row=await tryRead('get_procurement',[candidate]);
+   if(row&&String(row.buyer).toLowerCase()===addresses[0]&&row.title===item.title&&Number(row.commit_seconds)===COMMIT_SECONDS&&Number(row.reveal_seconds)===REVEAL_SECONDS){
+    item.auctionId=candidate;item.buyer=addresses[0];item.deadlines=row;await markState(item,'after',false);persist();
+    console.log('Recovered',item.name,'auction',candidate,'from finalized create',priorCreate.hash);return;
+   }
+  }
+  throw Error('Finalized create has no matching procurement; refusing to create a duplicate auction for '+item.name);
+ }
  if(!item.before)item.before=await economySnapshot(item,false,[addresses[0]]);
-  const result=await tx(item,'create',0,'create_procurement',[item.title,reference,...clauses,5n*U,COMMIT_SECONDS,REVEAL_SECONDS],5n*U,'SUCCESS');
+ const result=await tx(item,'create',0,'create_procurement',[item.title,reference,...clauses,5n*U,COMMIT_SECONDS,REVEAL_SECONDS],5n*U,'SUCCESS');
  item.auctionId=Number(await read('get_count'));item.buyer=addresses[0];
  item.deadlines=await read('get_procurement',[item.auctionId]);
  await markState(item,'after',false);persist();

@@ -5,18 +5,34 @@ Studionet consensus and transfer evidence. Direct Mode uses `vm.warp()` and
 mocked semantic responses; it never proves live validator independence or native
 GEN settlement.
 
-## Current deployment
+## Current configurable deployment
 
 | Claim | Evidence | Finalized transaction |
 |---|---|---|
-| Current source is deployed exactly | `scripts/preflight.mjs`; `source-verification.json` | `0x3e2cfa63e81b509cda9297ebe48d60516c5370682a8c0458d94d773d2bf7e408` — FINALIZED, MAJORITY_AGREE, leader SUCCESS |
-| Buyer response deadline is enforced | `tests/direct/test_state_machine.py::test_buyer_cannot_accept_after_response_window`; replacement run accepted within the response deadline | `0xbc96fc914c9fc81fb9da582f3ce0a89f51981fe73df6deb80abd4c78623205f5` |
+| Current source is deployed exactly | `scripts/preflight.mjs`; `source-verification.json` | `0x586ee807c33b94b58363ddff16d19f8141375a5309d0e5c5c78ed1a4c438be7c` — FINALIZED, MAJORITY_AGREE, leader SUCCESS; address `0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b`; source SHA256 `85939c9191661b34ec16a5d37a0d6ee1ad1ccb562ac066dec8b843c01879e241` |
+| Buyer-configurable timing is validated | `tests/direct/test_variable_timing.py`; 14 boundary, cap, independent-duration, deadline-anchor, multi-auction and overflow tests | Direct Mode only; hosted minimum schedule is recorded below |
 | Read pressure is bounded without financial-write retries | `frontend/src/lib/readCoordinator.test.ts` covers deduplication, concurrency, 429/503 backoff, partial reads, recovery, diagnostics and timeout non-overlap; Playwright covers page-specific read graphs | No live transaction is claimed for this deterministic frontend property |
 
-## Funded hosted demonstration
+The previous `0x24f95...7515` deployment and the earlier `0x9c70...8827`
+deployment remain explicit historical records in `deployment.json` and their
+deployment-scoped evidence files. No procurement or credit is migrated.
 
-The replacement-address run is the current release evidence. The superseded
-run remains archived below for provenance and comparison.
+## Current configurable-contract live verification
+
+The following rows are populated only from finalized transactions against
+`0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b`. A row remains `PENDING` or
+`BLOCKED` until its runner archive contains the finalized receipt, before/after
+state and accounting required by the claim.
+
+| Claim | Test/readback | Finalized transaction |
+|---|---|---|
+| Minimum schedule is stored on-chain | `scripts/drive.mjs` live minimum run, auction #1: 600-second commitment, 1200-second reveal, 1800-second total and derived fields | Create `0x589f0a5c4e361d0306d803ae2ebe5b719ede539bd6ba429a0f43b7d41f29864f`; four commitments `0x5f27e80ff35b7261dab398c97e0d9db52815de65c343b72afd146f8fa3077bdd`, `0x07da5a2eb77b4103695f5c67284e52fd4357819c32aabfa879da64cdb8663396`, `0xd5973328d2831e17887637db3e13f6df99fbfbe6304cb508512891c467fce156`, `0x2c31c49e86d22d9c549830214930114cab185758f32d7fad7c756f79fc5e67af`; all finalized successfully |
+| New-contract negative scenarios | `live-negative-configurable-batch1.json` and subsequent batch archives | Pending completion of the real elapsed-time runner; no outcome is inferred from submitted hashes |
+
+## Historical funded hosted demonstration on 0x24f95...
+
+This five-wallet run is preserved as historical evidence for the superseded
+fixed-duration deployment. It is not evidence for the configurable address.
 
 | Claim | Test/readback | Finalized transaction |
 |---|---|---|
@@ -29,20 +45,20 @@ run remains archived below for provenance and comparison.
 | Native GEN outbound messages and recipient readbacks | Parent receipts, message values and post-claim account reads | Same five replacement claim parents; child acceptance was not exposed by the pinned SDK |
 | Duplicate claim fails without a second entitlement | Finalized failed duplicate claim receipt; claims remain five | `0x82619bb2c32e601451980c893ef7d56db655bd334c8a334c9df02d5fef0f73c0` |
 
-## Genuine Chrome funding evidence
+## Historical genuine Chrome funding evidence on 0x24f95...
 
 The Convert-profile Chrome run is separate from the fixture Playwright suite
 and from the CLI-wallet lifecycle. It proves a real injected EIP-1193 wallet
-write and live reads against the current address.
+write and live reads against the superseded fixed-duration address.
 
 | Claim | Evidence | Finalized transaction |
 |---|---|---|
 | Browser wallet can fund a live procurement | `frontend-verification.json`: wallet `0xfcef...522f`, chain 61999, 5 GEN value, count 4 to 5, procurement #5 in `BIDDING` | `0xdd3cfc7253300469c78efc0c8ae4b43d9dd92d952a7ecf9f85654a7b01198d87`, status 7, result 6, leader SUCCESS |
 | Procurement #5 has a permissionless no-award refund path | Live readback: 0 bids, buyer credit 5 GEN after `0x8d83c4213cdf6dc77d6b7f005d728000459abe323f564144697887c570d93d5f` | Buyer claim remains unsubmitted in the browser evidence; no payout hash is inferred |
 
-## Automated multi-wallet Studionet negative scenarios
+## Historical automated multi-wallet Studionet negative scenarios on 0x24f95...
 
-These are real elapsed-time CLI-wallet runs against the current deployment,
+These are real elapsed-time CLI-wallet runs against the superseded deployment,
 not Direct Mode or fixture evidence. Each row is backed by the complete
 sanitized receipt/state/balance archive in `live-negative.json`. Claim rows
 remain `DISPATCHED_PENDING_EXTERNAL_SETTLEMENT` unless a child acceptance

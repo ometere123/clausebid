@@ -1,10 +1,11 @@
 {
   "network": "studionet",
   "chainId": 61999,
-  "contract": "0x24f95ED58fcfa4e339C504fF388A922347757515",
-  "sourceSha256": "18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4",
-  "retrievedCodeSha256": "18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4",
+  "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+  "sourceSha256": "85939c9191661b34ec16a5d37a0d6ee1ad1ccb562ac066dec8b843c01879e241",
+  "retrievedCodeSha256": "85939c9191661b34ec16a5d37a0d6ee1ad1ccb562ac066dec8b843c01879e241",
   "exactSourceMatch": true,
   "methodCount": 23,
-  "checkedAt": "2026-10-15T10:21:13.851Z"
+  "checkedAt": "2026-10-17T07:34:23.782Z",
+  "status": "CURRENT_CONFIGURABLE_DEPLOYMENT"
 }

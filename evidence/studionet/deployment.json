@@ -2,22 +2,44 @@
   "network": "studionet",
   "chainId": 61999,
   "rpc": "https://studio.genlayer.com/api",
-  "contractAddress": "0x24f95ED58fcfa4e339C504fF388A922347757515",
-  "sourceCommit": "a7a7487407949c8702093a34b45de53940e047fe",
-  "sourceSha256": "18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4",
-  "deploymentTransaction": "0x3e2cfa63e81b509cda9297ebe48d60516c5370682a8c0458d94d773d2bf7e408",
+  "contractAddress": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
+  "sourceCommit": "2643a3fd14d322382a34a1f1aaf944c523301295",
+  "sourceSha256": "85939c9191661b34ec16a5d37a0d6ee1ad1ccb562ac066dec8b843c01879e241",
+  "deploymentTransaction": "0x586ee807c33b94b58363ddff16d19f8141375a5309d0e5c5c78ed1a4c438be7c",
   "deploymentStatus": "FINALIZED",
   "deploymentConsensus": "MAJORITY_AGREE",
   "deploymentLeaderExecution": "SUCCESS",
   "deploymentValidatorVotes": 5,
   "sourceVerification": "evidence/studionet/source-verification.json",
+  "configuration": {
+    "commitSeconds": {"minimum": 600, "default": 86400, "maximum": 172800},
+    "revealSeconds": {"minimum": 1200, "default": 172800, "maximum": 345600},
+    "totalSeconds": {"minimum": 1800, "maximum": 518400},
+    "derivedRules": {
+      "eligibilitySeconds": "min(T, 259200)",
+      "deliverySeconds": "min(T, 259200)",
+      "responseSeconds": "min(T // 3, 86400)",
+      "correctionSeconds": "min((2 * T) // 3, 172800)",
+      "reviewGraceSeconds": "min(T, 259200)",
+      "deliveryReviewSeconds": "min(T, 259200)",
+      "deliveryReviewGraceSeconds": "min(T, 259200)"
+    }
+  },
   "previousDeployment": {
-    "contractAddress": "0x9c70a987A6875F0B0128AEf16C57F4998F778827",
-    "sourceSha256": "6626d52672ae45fd050dac7a7f675aa50db585843811a6267cf3f87dc4822058",
-    "deploymentTransaction": "0xf87c4ef9a0769788cb7d470745fed3e09054ee913045245e36e8bf4cb89bd445",
+    "contractAddress": "0x24f95ED58fcfa4e339C504fF388A922347757515",
+    "sourceSha256": "18b3f3e8812986848a23d68bfa5eb2fc47d5601e94c6cabd909091073cd5a8f4",
+    "deploymentTransaction": "0x3e2cfa63e81b509cda9297ebe48d60516c5370682a8c0458d94d773d2bf7e408",
     "status": "SUPERSEDED",
-    "reason": "accept_delivery did not enforce the ten-minute buyer response deadline; replacement adds the on-chain deadline check. Existing funded evidence remains archived against this address."
+    "reason": "The configurable timing interface replaces the fixed 10/20/30-minute schedule. Existing funded evidence and unsettled obligations remain archived against this address; no migration was performed.",
+    "sourceVerification": "evidence/studionet/source-verification-0x24f95ED58fcfa4e339C504fF388A922347757515.json",
+    "previousDeployment": {
+      "contractAddress": "0x9c70a987A6875F0B0128AEf16C57F4998F778827",
+      "sourceSha256": "6626d52672ae45fd050dac7a7f675aa50db585843811a6267cf3f87dc4822058",
+      "deploymentTransaction": "0xf87c4ef9a0769788cb7d470745fed3e09054ee913045245e36e8bf4cb89bd445",
+      "status": "SUPERSEDED",
+      "reason": "accept_delivery did not enforce the ten-minute buyer response deadline; the 0x24f95 replacement fixed that defect."
+    }
   },
   "frontend": "https://clausebid.vercel.app",
-  "note": "The current sourceCommit is the repository commit containing the deployed contract source. Later commits contain frontend, CI and evidence synchronization only. The replacement was not created to hide failed evidence; it fixes the documented late-acceptance defect."
+  "note": "The current sourceCommit contains the final configurable contract source. The deployment is the single justified redeployment for buyer-configurable timing. Later commits contain evidence, frontend binding and documentation synchronization only. Old procurements and GEN obligations are not migrated."
 }
