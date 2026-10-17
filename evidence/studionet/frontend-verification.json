@@ -1,19 +1,19 @@
 {
-  "verifiedAt": "2026-10-17T08:17:59Z",
-  "repositoryCommit": "5861ef543ca714c55888659b97ce53e418127341",
+  "verifiedAt": "2026-10-17T12:23:54Z",
+  "repositoryCommit": "a5b8c23b205684796aa64f5631cbe8315e079702",
   "productionUrl": "https://clausebid.vercel.app",
   "vercel": {
-    "deploymentId": "dpl_FaTV4MwaCQe7P7XvtRaWDKFuXnJa",
-    "deploymentUrl": "https://clausebid-fm9rcsq4x-delealufejoel-4184s-projects.vercel.app",
+    "deploymentId": "dpl_HNAgQKWMXsSewGTwwLyXHK2RABFw",
+    "deploymentUrl": "https://clausebid-kpyvayuin-delealufejoel-4184s-projects.vercel.app",
     "readyState": "READY",
     "nodeRuntime": "22.x",
     "verification": {
       "method": "Automatic GitHub-connected production deployment; no separate Vercel deployment was issued",
-      "observedAt": "2026-10-17T08:17:59Z",
+      "observedAt": "2026-10-17T12:23:54Z",
       "httpStatus": 200,
       "server": "Vercel",
-      "lastModified": "2026-10-17T07:53:49Z",
-      "deploymentGitSha": "5861ef543ca714c55888659b97ce53e418127341",
+      "lastModified": "2026-10-17T12:22:23Z",
+      "deploymentGitSha": "a5b8c23b205684796aa64f5631cbe8315e079702",
       "deploymentGitRef": "main",
       "deploymentState": "READY",
       "deploymentTarget": "production",
@@ -32,8 +32,8 @@
     "historicalAddressExplanation": "The superseded address is present only in the separately labelled historical evidence archive imported for claim attribution tests; it is not the runtime contract binding."
   },
   "productionBundle": {
-    "asset": "/assets/index-Bp7XGElN.js",
-    "bytes": 789029,
+    "asset": "/assets/index-HeToP7_W.js",
+    "bytes": 813151,
     "currentContractPresent": true,
     "fixtureFlagPresent": false,
     "walletRestoreCodePresent": true,
@@ -47,7 +47,7 @@
     "passed": 5,
     "repeatEachTwoTests": 10,
     "repeatEachTwoPassed": 10,
-    "frontendUnitTests": 18,
+    "frontendUnitTests": 19,
     "liveEvidence": false
   },
   "realInjectedWallet": {
@@ -82,7 +82,7 @@
     "chainId": 61999,
     "contract": "0xD20Fc1C6b029c4FF4E2c64E8A8e2F6B91eCa161b",
     "notes": [
-      "Production alias served HTTP 200 after the GitHub-connected READY deployment.",
+      "Production alias served HTTP 200 after the GitHub-connected READY deployment dpl_HNAgQKWMXsSewGTwwLyXHK2RABFw.",
       "The production bundle contains the configurable address and no fixture flag; historical addresses occur only in evidence imports.",
       "Live marketplace reads and page-specific partial-read warning behavior were observed. No new wallet write was submitted against this deployment in this verification pass."
     ]
