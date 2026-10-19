@@ -41,6 +41,17 @@ describe('deployment-scoped claim evidence',()=>{
     expect(matchArchivedClaim({...currentClaim,beneficiary:'0x0000000000000000000000000000000000000001'},CURRENT_DEPLOYMENT)).toBeNull();
   });
 
+  it('keeps all 19 immutable archive indexes when display sorting changes their order',()=>{
+    expect(CURRENT_CLAIMS).toHaveLength(19);
+    const sorted=[...CURRENT_CLAIMS].sort((a,b)=>a.beneficiary.localeCompare(b.beneficiary)||a.amountWei.localeCompare(b.amountWei));
+    expect(sorted.filter((claim,displayIndex)=>claim.claimIndex!==displayIndex)).toHaveLength(18);
+    for(const [displayIndex,record] of sorted.entries()){
+      const claim={beneficiary:record.beneficiary,amount:record.amountWei};
+      expect(matchArchivedClaim(claim,CURRENT_DEPLOYMENT,undefined,record.claimIndex)?.claimIndex).toBe(record.claimIndex);
+      if(record.claimIndex!==displayIndex)expect(matchArchivedClaim(claim,CURRENT_DEPLOYMENT,undefined,displayIndex)).toBeNull();
+    }
+  });
+
   it('never reuses one parent transaction for two immutable claim records',()=>{
     const parents=CURRENT_CLAIMS.map(claim=>claim.parentTransaction).filter((hash):hash is string=>Boolean(hash));
     expect(new Set(parents).size).toBe(parents.length);

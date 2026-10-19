@@ -1,7 +1,7 @@
 export type ReadDiagnostic={
   rpcMethod:'gen_call';
   contractMethod:string;
-  kind:'rate-limit'|'provider-unavailable'|'timeout'|'unsupported-method'|'contract-error'|'unknown';
+  kind:'rate-limit'|'provider-unavailable'|'timeout'|'recovery-limited'|'unsupported-method'|'contract-error'|'unknown';
   code?:number|string;
   httpStatus?:number;
   retryAfterSeconds?:number;
@@ -79,16 +79,17 @@ export function diagnoseReadError(contractMethod:string,error:unknown,attempts:n
   const retry=findNumber(error,['retry_after_seconds','retryAfterSeconds','retry-after','retryAfter'])??retryAfterSeconds;
   const rate=code===-32029||httpStatus===429||/rate limit|too many requests|\b429\b|retry_after_seconds/i.test(text);
   const timeout=String(code??'').toUpperCase()==='ETIMEDOUT'||/timed out|timeout|deadline exceeded/i.test(text);
+  const recoveryLimited=String(code??'').toUpperCase()==='EREADRECOVERY';
   const unsupported=/method not found|unsupported method|not supported by this provider/i.test(text);
   const contract=/execution reverted|revert|invalid argument|invalid params|method not found|contract error/i.test(text);
   const provider=httpStatus===408||httpStatus===502||httpStatus===503||httpStatus===504||/failed to fetch|fetch failed|networkerror|network error|load failed|econnreset|econnrefused|enotfound|socket hang up|\b503\b|\b502\b|\b504\b/i.test(text);
-  const kind=rate?'rate-limit':timeout?'timeout':unsupported?'unsupported-method':contract?'contract-error':provider?'provider-unavailable':'unknown';
+  const kind=rate?'rate-limit':timeout?'timeout':recoveryLimited?'recovery-limited':unsupported?'unsupported-method':contract?'contract-error':provider?'provider-unavailable':'unknown';
   return {rpcMethod:'gen_call',contractMethod,kind,code,httpStatus,retryAfterSeconds:retry,attempts,message:sanitize(text||'Studionet read failed')};
 }
 export function isTransientReadDiagnostic(diagnostic:ReadDiagnostic):boolean{
-  // readContractWithTimeout cannot cancel the SDK promise underneath it. Do
-  // not start another request while that timed-out request may still be in
-  // flight; the UI can be refreshed explicitly once the provider recovers.
+  // readContractWithTimeout cannot cancel the SDK promise underneath it. Its
+  // bounded recovery guard permits only a small number of in-flight drains;
+  // this coordinator never retries a timeout or a recovery-limit failure.
   const code=String(diagnostic.code??'').toUpperCase();
   return (diagnostic.kind==='rate-limit'||diagnostic.kind==='provider-unavailable')&&code!=='ETIMEDOUT'&&!/timed out|timeout/i.test(diagnostic.message);
 }

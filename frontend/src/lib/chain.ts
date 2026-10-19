@@ -26,15 +26,35 @@ const desiredChain=()=>`0x${CHAIN_ID.toString(16)}`;
 const createReadClient=()=>createClient({chain:studionet});
 let reader:any=createReadClient();
 export const READ_TIMEOUT_MS=20000;
-let pendingReadDrains:Promise<void>[]=[];
-async function readContractWithTimeout(request:()=>Promise<unknown>):Promise<unknown>{
- if(pendingReadDrains.length)await Promise.allSettled(pendingReadDrains);
+export const READ_DRAIN_GRACE_MS=1000;
+// genlayer-js does not expose cancellation for an in-flight read. After a
+// timeout, allow one bounded recovery attempt, but never let hung calls grow
+// without limit. A later read fails fast once two unresolved SDK calls are
+// still draining; an explicit refresh can retry after the provider recovers.
+export const MAX_UNSETTLED_READS=2;
+type ReadTimeoutOptions={timeoutMs?:number;drainGraceMs?:number};
+let pendingReadDrains=new Set<Promise<void>>();
+async function waitForReadRecovery(drainGraceMs:number){
+ if(!pendingReadDrains.size)return;
+ const pending=Array.from(pendingReadDrains);
+ await Promise.race([
+  Promise.allSettled(pending),
+  new Promise<void>(resolve=>setTimeout(resolve,drainGraceMs)),
+ ]);
+ if(pendingReadDrains.size>=MAX_UNSETTLED_READS)throw Object.assign(new Error('Studionet read recovery is still in progress; wait for an earlier read to settle before retrying'),{code:'EREADRECOVERY'});
+}
+export async function readContractWithTimeout(request:()=>Promise<unknown>,options:ReadTimeoutOptions={}):Promise<unknown>{
+ const timeoutMs=options.timeoutMs??READ_TIMEOUT_MS;
+ const drainGraceMs=options.drainGraceMs??READ_DRAIN_GRACE_MS;
+ await waitForReadRecovery(drainGraceMs);
  let timer:ReturnType<typeof setTimeout>|undefined;
  let timeoutTriggered=false;
  const underlying=Promise.resolve().then(request);
- const drain=underlying.then(()=>{},()=>{});
- try{return await Promise.race([underlying,new Promise((_,reject)=>{timer=setTimeout(()=>{timeoutTriggered=true;reject(Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'}))},READ_TIMEOUT_MS)})])}
- catch(error){if(timeoutTriggered){pendingReadDrains=[...pendingReadDrains,drain];void drain.then(()=>{pendingReadDrains=pendingReadDrains.filter(item=>item!==drain)})}throw error}
+ let settled=false;
+ let drain!:Promise<void>;
+ drain=underlying.then(()=>{settled=true},()=>{settled=true});
+ try{return await Promise.race([underlying,new Promise((_,reject)=>{timer=setTimeout(()=>{timeoutTriggered=true;reject(Object.assign(new Error('Studionet read timed out'),{code:'ETIMEDOUT'}))},timeoutMs)})])}
+ catch(error){if(timeoutTriggered&&!settled){pendingReadDrains.add(drain);void drain.then(()=>pendingReadDrains.delete(drain))}throw error}
  finally{if(timer)clearTimeout(timer)}
 }
 const CACHE_TTL=5000;
