@@ -169,7 +169,7 @@ The award was followed by a submitted delivery and buyer acceptance; the procure
 
 ### Verified engineering and financial evidence
 
-- **Automated release checks:** 41 Direct Mode, 2 Python commitment-vector, 25 frontend-unit and 8 Playwright tests passed locally, alongside GenVM lint and the production build. The [GitHub Actions release workflow](https://github.com/ometere123/clausebid/actions/workflows/checks.yml) is the authoritative CI link; the final run is recorded with the release commit. Fixture-based Playwright tests are frontend regressions, **not** live wallet/consensus evidence.
+- **Automated release checks:** 41 Direct Mode, 2 Python commitment-vector, 25 frontend-unit and 8 Playwright tests passed locally, alongside GenVM lint and the production build. The [latest verified release CI run](https://github.com/ometere123/clausebid/actions/runs/39181498318) and the [GitHub Actions release workflow](https://github.com/ometere123/clausebid/actions/workflows/checks.yml) are authoritative. Fixture-based Playwright tests are frontend regressions, **not** live wallet/consensus evidence.
 - **Funded negative paths:** no-award refund, unrevealed-bond forfeiture, seller default, correction exhaustion, buyer refusal followed by independent fulfillment PASS, timely reserved-review protection, stale-review cancellation and duplicate/unauthorised claim rejection have archived transaction evidence.
 - **Claim-accounting archive:** 19 immutable claims, **128 GEN dispatched**, **119 GEN outstanding** and **119 GEN contract balance**. Claim parents, beneficiaries and outbound message amounts are cross-checked in the archive.
 
